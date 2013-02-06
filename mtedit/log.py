@@ -22,7 +22,7 @@ import urllib2
 script_dir = os.path.dirname(os.path.realpath(__file__))
 
 # path to the cookies file used for storing the login cookies.
-cookies_file = os.path.join(script_dir, "mtview.cookies")
+cookies_file = os.path.join(script_dir, "mtedit.cookies")
 
 
 def Log(source, options):

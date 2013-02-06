@@ -9,7 +9,7 @@ from optparse import OptionParser
 import sys
 
 
-usage = """Multitouch Viewer Usage Examples:
+usage = """Multitouch Editor Usage Examples:
 
 Viewing logs:
 $ %prog filename.log (from file)
@@ -42,7 +42,7 @@ def main(argv):
                          "via CTRL-C [Default: False]")
   parser.add_option("-s", "--serve",
                     dest="serve", action="store_true", default=False,
-                    help="Serve a standalone MTView.")
+                    help="Serve a standalone MTEdit.")
   (options, args) = parser.parse_args()
 
   editor = LogEditor(persistent=options.persistent)
