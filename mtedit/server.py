@@ -50,7 +50,7 @@ class TPViewHTTPRequestHandler(SimpleHTTPRequestHandler):
       data.loaded = True
 
     elif self.path.startswith("/edit"):
-      self.path = "mtview.html"
+      self.path = "mtedit.html"
       SimpleHTTPRequestHandler.do_GET(self)
 
     else:
