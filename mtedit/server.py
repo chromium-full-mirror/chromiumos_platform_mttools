@@ -67,21 +67,14 @@ class TPViewHTTPRequestHandler(SimpleHTTPRequestHandler):
       self.respond("Success")
 
   def translate_path(self, path):
-      """
+    """
       Modified version of translate_path to use script_dir
       for looking up files instead of the local working dir.
-      """
-      path = posixpath.normpath(urllib.unquote(path))
-      words = path.split('/')
-      words = filter(None, words)
-      path = script_dir
-      for word in words:
-        drive, word = os.path.splitdrive(word)
-        head, word = os.path.split(word)
-        if word in (os.curdir, os.pardir):
-          continue
-        path = os.path.join(path, word)
-      return path
+    """
+    path = SimpleHTTPRequestHandler.translate_path(self, path)
+    if path.startswith(os.getcwd()):
+      path = path.replace(os.getcwd(), script_dir, 1)
+    return path
 
 def View(port, log=None, persistent=False):
   """
