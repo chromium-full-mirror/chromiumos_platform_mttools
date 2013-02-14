@@ -17,11 +17,11 @@ LDLIBS += -levdev_hollow -lutouch-evemu -lgestures -lglib-2.0 $(PC_LIBS)
 
 common_OBJS = src/evdev_gestures.o \
 	src/evemu_device.o \
-	src/generic_stream.o \
 	src/gestures_mock.o \
 	src/libevdev_mock.o \
 	src/prop_provider.o \
 	src/replay_device.o \
+	src/stream.o \
 	src/trimmer.o
 
 # replay tool
@@ -37,7 +37,6 @@ clean: CLEAN(replay)
 tests_LIBS = -lgtest
 tests_OBJS = src/test_main.o \
 	src/libevdev_mock_tests.o \
-	src/evemu_device_tests.o \
 	src/prop_provider_tests.o \
 	src/trimmer_tests.o \
 	src/trimmer_tests_data.o \

@@ -5,17 +5,19 @@
 #ifndef REPLAY_DEVICE_H_
 #define REPLAY_DEVICE_H_
 
+#include <cstdarg>
+
 #include <string>
 #include <vector>
 
 #include <base/basictypes.h>
 #include <gestures/gestures.h>
 
-#include <evdev_gestures.h>
-#include <evemu_device.h>
-#include <generic_stream.h>
-#include <libevdev_mock.h>
-#include <prop_provider.h>
+#include "evdev_gestures.h"
+#include "evemu_device.h"
+#include "libevdev_mock.h"
+#include "prop_provider.h"
+#include "stream.h"
 
 namespace replay {
 
@@ -36,13 +38,13 @@ struct ReplayDeviceConfig {
   };
 
   // Array containing all streams for log files
-  GenericOStream log[ReplayDeviceConfig::kLogCategoryCount];
+  Stream log[ReplayDeviceConfig::kLogCategoryCount];
 
-  // Stream to be used for reading properties
-  GenericIStream properties;
+  // json string containing properties
+  std::string properties;
 
-  // stream to the device data file
-  GenericIStream device;
+  // File pointer to the device data file
+  Stream device;
 };
 
 // The main class for replaying event logs. It can only be instantiated with a
@@ -54,14 +56,14 @@ class ReplayDevice {
  public:
   // All instances are tracked and accessible via GetDevice to allow mock
   // methods to access instances without having a pointer to them.
-  ReplayDevice(ReplayDeviceConfig* config);
+  explicit ReplayDevice(ReplayDeviceConfig* config);
 
   // Unregisters this instance automatically and it will no longer be accessible
   // via GetDevice.
   virtual ~ReplayDevice();
 
   // Replays all events from stream until the stream is empty.
-  void ReplayEvents(GenericIStream* stream);
+  void ReplayEvents(Stream* stream);
 
   // Replay a single input event.
   void ReplayEvent(const struct input_event& event);
@@ -71,15 +73,20 @@ class ReplayDevice {
     return current_time_;
   }
 
-  // Log a message to specified category. Used by mocks for logging.
+  // Log a message to specified category.
   void Log(ReplayDeviceConfig::LogCategory category,
-           const std::string& message);
+           const char* message, ...);
+
+  // Log a message to specified category using a va_list.
+  // Useful when mocking log methods.
+  void VLog(ReplayDeviceConfig::LogCategory category,
+           const char* format, va_list args);
 
   // The gestures library does have any means of identifying different devices
-  // in the log method. It will use LogAll to log to all open instances of
+  // in the log method. It will use VLogAll to log to all open instances of
   // ReplayDevice.
-  static void LogAll(ReplayDeviceConfig::LogCategory category,
-                     const std::string& message);
+  static void VLogAll(ReplayDeviceConfig::LogCategory category,
+                     const char* format, va_list args);
 
   // This method is to be called by libevdev when a syn event is processed.
   void SynCallback(EventStatePtr, struct timeval*);
@@ -114,8 +121,6 @@ class ReplayDevice {
   }
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(ReplayDevice);
-
   // Reference to the configuration for accessing the streams.
   ReplayDeviceConfig* config_;
 
@@ -141,9 +146,10 @@ class ReplayDevice {
   GesturesTimerCallback timer_callback_;
   void* timer_callback_udata_;
 
-
   // Array containing all instances of ReplayDevice.
   static std::vector<ReplayDevice*> devices_;
+
+  DISALLOW_COPY_AND_ASSIGN(ReplayDevice);
 };
 
 }  // namespace replay

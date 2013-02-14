@@ -6,32 +6,32 @@
 #define EVEMU_DEVICE_H_
 
 #include <linux/input.h>
+#include <string>
 
-#include <iostream>
-
+#include <base/basictypes.h>
 extern "C" {
 #include <evemu.h>
 }
-#include <base/basictypes.h>
 
 namespace evemu {
 
-// This class wraps the utouch-evemu library and allows it to be used with
-// C++ streams instead of the C FILE* API.
+// This class wraps the utouch-evemu library.
+// This class is deprecated and will be replaced by the
+// read/write API of libevdev in a follow-up CL.
 class EvemuDevice {
  public:
   // Create new device without association to an kernel device.
   EvemuDevice();
   virtual ~EvemuDevice();
 
-  // Read a device file from stream
-  bool ReadDeviceFile(std::istream* stream);
+  // Read a device file from file
+  bool ReadDeviceFile(FILE* fp);
 
-  // Read a single event from stream. Returns true if reading was successful.
-  static bool ReadEvent(std::istream* stream, struct input_event* event);
+  // Read a single event from file. Returns true if reading was successful.
+  static bool ReadEvent(FILE* fp, struct input_event* event);
 
-  // Write a single event to a stream. Returns true if writing was successful.
-  static bool WriteEvent(std::ostream* stream, const struct input_event& event);
+  // Write a single event to a file. Returns true if writing was successful.
+  static bool WriteEvent(FILE* fp, const struct input_event& event);
 
   // Access information provided by the device file. See utouch-evemu
   // for information on these methods.
@@ -41,10 +41,10 @@ class EvemuDevice {
   const struct input_absinfo& GetAbsinfo(const size_t& key);
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(EvemuDevice);
-
   // pointer to underlying C API device.
   evemu_device* evemu_;
+
+  DISALLOW_COPY_AND_ASSIGN(EvemuDevice);
 };
 
 }  // namespace evemu

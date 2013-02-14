@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gestures_mock.h>
+#include "gestures_mock.h"
 
 #include <cstdarg>
 
 #include <gestures/gestures.h>
 
-#include <replay_device.h>
+#include "replay_device.h"
 
 using replay::ReplayDeviceConfig;
 using replay::ReplayDevice;
@@ -16,14 +16,10 @@ using replay::ReplayDevice;
 extern "C" {
 
 void gestures_log(int level, const char* format, ...) {
-  char buffer[1024];
   va_list args;
   va_start(args, format);
-  vsnprintf(buffer, sizeof(buffer), format, args);
+  ReplayDevice::VLogAll(ReplayDeviceConfig::kLogGestures, format, args);
   va_end(args);
-
-  std::string string(buffer);
-  ReplayDevice::LogAll(ReplayDeviceConfig::kLogGestures, string);
 }
 
 // Declared in gestures library. Empty definition here.

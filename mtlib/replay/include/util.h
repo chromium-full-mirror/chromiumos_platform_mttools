@@ -35,14 +35,14 @@ static inline bool TestBit(int bit, unsigned long* array) {
   return !!(array[bit / LONG_BITS] & (1L << (bit % LONG_BITS)));
 }
 
-static inline void AssignBit(unsigned long* array, int bit, int value)
-{
+static inline void AssignBit(unsigned long* array, int bit, int value) {
     unsigned long mask = (1L << (bit % LONG_BITS));
     if (value)
         array[bit / LONG_BITS] |= mask;
     else
         array[bit / LONG_BITS] &= ~mask;
 }
+
 }  // namespace replay
 
 #endif  // UTIL_H_

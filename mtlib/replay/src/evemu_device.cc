@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <evemu_device.h>
+#include "evemu_device.h"
 
 #include <cstdio>
 
@@ -13,44 +13,26 @@ EvemuDevice::EvemuDevice() {
 }
 
 EvemuDevice::~EvemuDevice() {
-   evemu_delete(evemu_);
+  evemu_delete(evemu_);
 }
 
-bool EvemuDevice::ReadDeviceFile(std::istream* stream) {
-  std::string data((std::istreambuf_iterator<char>(*stream)),
-                   std::istreambuf_iterator<char>());
-  // fmemopen requires non-const pointer, but does not modify in "r" mode
-  FILE* file = fmemopen(const_cast<char*>(data.c_str()), data.length(), "r");
-  bool result = evemu_read(evemu_, file);
-  fclose(file);
-  return result;
+bool EvemuDevice::ReadDeviceFile(FILE* fp) {
+  return evemu_read(evemu_, fp);
 }
 
-bool EvemuDevice::ReadEvent(std::istream* stream, struct input_event* event) {
-  std::string line;
-  std::getline(*stream, line);
-  if (line.length() == 0)
-    return false;
-
-  // fmemopen requires non-const pointer, but does not modify in "r" mode
-  FILE* file = fmemopen(const_cast<char*>(line.c_str()), line.length(), "r");
-
-  bool result = evemu_read_event(file, event) > 0;
-  fclose(file);
-  return result;
+bool EvemuDevice::ReadEvent(FILE* fp, struct input_event* event) {
+  struct input_event tmp;
+  int ret = evemu_read_event(fp, &tmp);
+  if (ret > 0) {
+    *event = tmp;
+    return true;
+  }
+  return false;
 }
 
-bool EvemuDevice::WriteEvent(std::ostream* stream,
+bool EvemuDevice::WriteEvent(FILE* fp,
                              const struct input_event& event) {
-  char buffer[128] = {0};
-
-  // fmemopen requires non-const pointer, but does not modify in "r" mode
-  FILE* file = fmemopen(buffer, 1024, "w");
-
-  bool result = evemu_write_event(file, &event) > 0;
-  fclose(file);
-  (*stream) << const_cast<const char*>(buffer);
-  return result;
+  return evemu_write_event(fp, &event) > 0;
 }
 
 const std::string EvemuDevice::GetName() {

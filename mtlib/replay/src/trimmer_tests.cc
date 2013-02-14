@@ -2,14 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <prop_provider.h>
-#include <generic_stream.h>
-#include <replay_device.h>
-#include <gtest/gtest.h>
 #include <limits>
-#include <trimmer.h>
-#include <iostream>
-#include <iomanip>
+
+#include <gtest/gtest.h>
+
+#include "prop_provider.h"
+#include "replay_device.h"
+#include "trimmer.h"
 
 // Event log for testing trimming.
 // The log contains the following movements.
@@ -33,39 +32,38 @@ namespace replay {
 // restored at the beginning of the trimmed log no matter what the state is.
 class TrimmerTests : public ::testing::Test {
  protected:
-
   // Perform a trim using the Trimmer class and return the result as a
   // string.
   std::string Trim(const char* in, double from, double to) {
     ReplayDeviceConfig config;
-    config.device.OpenBuffer(trimmer_tests_device);
+    config.device.OpenReadBuffer(trimmer_tests_device);
     ReplayDevice device(&config);
     Trimmer trimmer(&device);
 
-    GenericIStream events;
-    events.OpenBuffer(trimmer_tests_events);
+    Stream events;
+    events.OpenReadBuffer(trimmer_tests_events);
 
-    std::stringstream trimresults;
-    GenericOStream trimout(&trimresults);
+    // buffer for output of trimming.
+    // At least as big as the input, but to be save give some extra
+    // space in case the output is formated a little different.
+    size_t buffer_size = strlen(trimmer_tests_events) * 1.2;
+    Stream out;
+    out.OpenWriteBuffer(buffer_size);
 
-    trimmer.Trim(&events, &trimout, from, to);
-    trimresults.seekg(0, std::ios::beg);
+    trimmer.Trim(&events, &out, from, to);
 
-    return std::string(trimresults.str());
+    return std::string(out.GetBuffer());
   }
 
   // Create new instances for all replay devices
   void SetUp() {
     replay_config_trimmed_ = new ReplayDeviceConfig();
-    replay_config_trimmed_->device.OpenBuffer(trimmer_tests_device);
+    replay_config_trimmed_->device.OpenReadBuffer(trimmer_tests_device);
     replay_trimmed_ = new ReplayDevice(replay_config_trimmed_);
 
     replay_config_original_ = new ReplayDeviceConfig();
-    replay_config_original_->device.OpenBuffer(trimmer_tests_device);
+    replay_config_original_->device.OpenReadBuffer(trimmer_tests_device);
     replay_original_ = new ReplayDevice(replay_config_original_);
-
-    trimmed_ = new GenericIStream();
-    original_ = new GenericIStream();
   }
 
   // clean up instances
@@ -74,14 +72,13 @@ class TrimmerTests : public ::testing::Test {
     delete replay_config_trimmed_;
     delete replay_original_;
     delete replay_config_original_;
-    delete trimmed_;
-    delete original_;
   }
 
   // replay until the next SYN event is received
-  bool NextSyn(ReplayDevice* device, GenericIStream* events) {
+  bool NextSyn(ReplayDevice* device, Stream* events) {
     input_event event;
-    while (evemu::EvemuDevice::ReadEvent(events->GetStream(), &event)) {
+
+    while (evemu::EvemuDevice::ReadEvent(events->GetFP(), &event)) {
       device->ReplayEvent(event);
       if (event.type == EV_SYN) {
         return true;
@@ -91,7 +88,7 @@ class TrimmerTests : public ::testing::Test {
   }
 
   // replay until the SYN event with the requested timestamp is found.
-  bool FindMatchingSyn(ReplayDevice* device, GenericIStream* events,
+  bool FindMatchingSyn(ReplayDevice* device, Stream* events,
                        double timestamp) {
     while (timestamp > device->GetCurrentTime()) {
       if (!NextSyn(device, events)) {
@@ -164,8 +161,8 @@ class TrimmerTests : public ::testing::Test {
   void ExpectEqualReplay() {
     ExpectEqualState(replay_trimmed_, replay_original_);
 
-    while (NextSyn(replay_trimmed_, trimmed_)) {
-      if (!NextSyn(replay_original_, original_)) {
+    while (NextSyn(replay_trimmed_, &trimmed_)) {
+      if (!NextSyn(replay_original_, &original_)) {
         ADD_FAILURE() << "original file ends before trimmed file";
         return;
       }
@@ -175,23 +172,23 @@ class TrimmerTests : public ::testing::Test {
 
   // Execute trim and store trim result inside a stream
   void TrimEvents(double trimFrom, double trimTo) {
-    original_->OpenBuffer(trimmer_tests_events);
-    std::string trimmedStr = Trim(trimmer_tests_events, trimFrom, trimTo);
-    trimmed_->OpenBuffer(trimmedStr.c_str());
+    original_.OpenReadBuffer(trimmer_tests_events);
+    std::string result = Trim(trimmer_tests_events, trimFrom, trimTo);
+    trimmed_.OpenReadBuffer(result.c_str());
   }
 
   // Test if both devices replay cover the same timestamps
   // and if the resulting states are the same.
   void ExpectNoTrimming() {
     // select first SYN for both
-    NextSyn(replay_trimmed_, trimmed_);
-    NextSyn(replay_original_, original_);
+    NextSyn(replay_trimmed_, &trimmed_);
+    NextSyn(replay_original_, &original_);
 
     ExpectEqualReplay();
 
-    // expect both streams to be consumed completely
-    EXPECT_FALSE(trimmed_->Good());
-    EXPECT_FALSE(original_->Good());
+    // expect both streams to have no events left
+    EXPECT_LE(fscanf(trimmed_.GetFP(), "E:"), 0);
+    EXPECT_LE(fscanf(original_.GetFP(), "E:"), 0);
   }
 
   // Test if both devices replay the same states.
@@ -199,15 +196,16 @@ class TrimmerTests : public ::testing::Test {
   // original log.
   void ExpectTrimmedReplayIsEqual() {
     // select first SYN from trimmed replay
-    NextSyn(replay_trimmed_, trimmed_);
+    NextSyn(replay_trimmed_, &trimmed_);
     // find matching SYN in original replay
-    FindMatchingSyn(replay_original_, original_,
+    FindMatchingSyn(replay_original_, &original_,
                     replay_trimmed_->GetCurrentTime());
 
     ExpectEqualReplay();
 
     // expect both streams to be consumed completely
-    EXPECT_FALSE(trimmed_->Good());
+    EXPECT_LE(fscanf(trimmed_.GetFP(), "E:"), 0);
+    EXPECT_LE(fscanf(original_.GetFP(), "E:"), 0);
   }
 
  protected:
@@ -216,8 +214,8 @@ class TrimmerTests : public ::testing::Test {
   ReplayDevice* replay_trimmed_;
   ReplayDevice* replay_original_;
 
-  GenericIStream* original_;
-  GenericIStream* trimmed_;
+  Stream original_;
+  Stream trimmed_;
 };
 
 TEST_F(TrimmerTests, TestNoTrimming) {

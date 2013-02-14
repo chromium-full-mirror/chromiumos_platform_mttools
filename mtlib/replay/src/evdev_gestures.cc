@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <evdev_gestures.h>
+#include "evdev_gestures.h"
 
 namespace replay {
 

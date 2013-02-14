@@ -5,11 +5,9 @@
 #include <replay_device.h>
 
 #include <cmath>
-#include <iomanip>
-#include <iostream>
 
-#include <gestures_mock.h>
-#include <libevdev_mock.h>
+#include "gestures_mock.h"
+#include "libevdev_mock.h"
 
 namespace replay {
 
@@ -25,7 +23,7 @@ ReplayDevice::ReplayDevice(ReplayDeviceConfig* config)
 
   // read device file into evemu
   evemu_device_ = new evemu::EvemuDevice();
-  evemu_device_->ReadDeviceFile(config_->device.GetStream());
+  evemu_device_->ReadDeviceFile(config_->device.GetFP());
 
   // create libevdev mock
   evdev_device_ = NewEvdevMock(id_);
@@ -36,8 +34,8 @@ ReplayDevice::ReplayDevice(ReplayDeviceConfig* config)
   interpreter_->Initialize();
 
   // load properties from properties file
-  if (config->properties.Good()) {
-    if (!properties_.Load(&config->properties)) {
+  if (!config->properties.empty()) {
+    if (!properties_.Load(config->properties)) {
       std::cerr << "Failed loading properties file" << std::endl;
       exit(-1);
     }
@@ -53,16 +51,16 @@ ReplayDevice::~ReplayDevice() {
   devices_[id_] = NULL;
 }
 
-void ReplayDevice::ReplayEvents(GenericIStream* stream) {
+void ReplayDevice::ReplayEvents(Stream* stream) {
   struct input_event event;
-  while (evemu_device_->ReadEvent(stream->GetStream(), &event) > 0) {
+  while (evemu_device_->ReadEvent(stream->GetFP(), &event) > 0) {
     ReplayEvent(event);
   }
 
   // handle remaining timers.
   RunTimer(INFINITY);
-
-  Log(ReplayDeviceConfig::kLogActivity, interpreter_->EncodeActivityLog());
+  std::string activity = interpreter_->EncodeActivityLog();
+  Log(ReplayDeviceConfig::kLogActivity, activity.c_str());
 }
 
 void ReplayDevice::ReplayEvent(const struct input_event& event) {
@@ -70,20 +68,30 @@ void ReplayDevice::ReplayEvent(const struct input_event& event) {
   Event_Process(evdev_device_, const_cast<struct input_event*>(&event));
 }
 
-void ReplayDevice::Log(ReplayDeviceConfig::LogCategory category,
-                       const std::string& message) {
-  GenericStream<std::ostream>& stream = config_->log[category];
+void ReplayDevice::VLog(ReplayDeviceConfig::LogCategory category,
+                       const char* format, va_list args) {
+  Stream& stream = config_->log[category];
   if (stream.Good()) {
-    (*stream.GetStream()) << message;
-    stream.GetStream()->flush();
+    vfprintf(stream.GetFP(), format, args);
   }
 }
 
-void ReplayDevice::LogAll(ReplayDeviceConfig::LogCategory category,
-                          const std::string& message) {
+void ReplayDevice::Log(ReplayDeviceConfig::LogCategory category,
+                       const char* format, ...) {
+  Stream& stream = config_->log[category];
+  if (stream.Good()) {
+    va_list args;
+    va_start(args, format);
+    VLog(category, format, args);
+    va_end(args);
+  }
+}
+
+void ReplayDevice::VLogAll(ReplayDeviceConfig::LogCategory category,
+                          const char* format, va_list args) {
   for (size_t i = 0; i < devices_.size(); ++i) {
     if (devices_[i]) {
-      devices_[i]->Log(category, message);
+      devices_[i]->VLog(category, format, args);
     }
   }
 }
@@ -97,49 +105,51 @@ void ReplayDevice::SynCallback(EventStatePtr evstate, struct timeval* timeval) {
 }
 
 void ReplayDevice::GestureCallback(const struct Gesture* gesture) {
-  if (config_->log[ReplayDeviceConfig::kLogGestures].Good()) {
+  const char* separator = "----------------------------------------"
+                          "----------------------------------------\n";
 
-    std::ostream& stream = *(config_->log[ReplayDeviceConfig::kLogGestures]
-                             .GetStream());
+  Stream& stream = config_->log[ReplayDeviceConfig::kLogGestures];
+  if (stream.Good()) {
+    FILE* fp = stream.GetFP();
+    fprintf(fp, "%s", separator);
+    fprintf(fp, "%f.6 - ", current_time_);
 
-    stream << "----------------------------------------"
-              "----------------------------------------" << std::endl;
-    stream << std::setiosflags(std::ios::fixed) << std::setprecision(6)
-           << current_time_ << " - ";
     switch (gesture->type) {
     case kGestureTypeContactInitiated:
-      stream << "Contact Initiated" << std::endl;
+      fprintf(fp, "Contact Initiated");
       break;
     case kGestureTypeMove:
-      stream << "Move (" << static_cast<int>(gesture->details.move.dx) << ", "
-             << static_cast<int>(gesture->details.move.dy) << ")";
+      fprintf(fp, "Move (%d, %d)",
+              static_cast<int>(gesture->details.move.dx),
+              static_cast<int>(gesture->details.move.dy));
       break;
     case kGestureTypeScroll:
-      stream << "Scroll (" << static_cast<int>(gesture->details.scroll.dx)
-             << ", " << static_cast<int>(gesture->details.scroll.dy) << ")";
+      fprintf(fp, "Scroll (%d, %d)",
+              static_cast<int>(gesture->details.scroll.dx),
+              static_cast<int>(gesture->details.scroll.dy));
       break;
     case kGestureTypeButtonsChange:
-      stream << "Buttons Change up=" << gesture->details.buttons.up << ", down="
-             << gesture->details.buttons.up;
+      fprintf(fp, "Buttons Change up=%d, down=%d",
+              gesture->details.buttons.up,
+              gesture->details.buttons.up);
       break;
     case kGestureTypeFling:
-      stream << "Fling state=" << gesture->details.fling.fling_state << " ("
-             << gesture->details.fling.vx << ", " << gesture->details.fling.vy
-             << ")";
+      fprintf(fp, "Fling state=%d (%d, %d)",
+              gesture->details.fling.fling_state,
+              static_cast<int>(gesture->details.fling.vx),
+              static_cast<int>(gesture->details.fling.vy));
       break;
     case kGestureTypeSwipe:
-      stream << "Swipe dx=" << gesture->details.swipe.dx;
+      fprintf(fp, "Swipe dx=%d", static_cast<int>(gesture->details.swipe.dx));
       break;
     case kGestureTypePinch:
-      stream << "Pinch dz=" << gesture->details.pinch.dz;
+      fprintf(fp, "Pinch dz=%d", static_cast<int>(gesture->details.pinch.dz));
       break;
     case kGestureTypeSwipeLift:
-      stream << "Swipe Lift";
+      fprintf(fp, "Swipe Lift");
       break;
     }
-    stream << std::endl;
-    stream << "----------------------------------------"
-              "----------------------------------------" << std::endl;
+    fprintf(fp, "\n%s", separator);
   }
 }
 void ReplayDevice::SetFakeTimer(stime_t time, GesturesTimerCallback callback,

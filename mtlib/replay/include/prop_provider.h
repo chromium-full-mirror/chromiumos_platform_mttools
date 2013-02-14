@@ -5,13 +5,11 @@
 #ifndef PROP_PROVIDER_H_
 #define PROP_PROVIDER_H_
 
-#include <string>
 #include <map>
+#include <string>
 
 #include <base/basictypes.h>
 #include <gestures/gestures.h>
-
-#include <generic_stream.h>
 
 // Declared by gestures library. Implemented here.
 // This structure declares virtual overloaded get/set methods to access the
@@ -44,16 +42,12 @@ class PropProvider {
   PropProvider();
   ~PropProvider();
 
-  // Load properties from a JSON file.
-  // See LoadString.
-  bool Load(GenericIStream* stream);
-
   // Load properties from a JSON string.
   // The object has to consist of a dictionary with numerical or string
   // values. The method will return false if parsing fails due to
   // parsing errors or unknown properties. An error message will be
   // print to std::cerr in this case.
-  bool LoadString(const std::string& data);
+  bool Load(const std::string& data);
 
   // Create a new property.
   // The loc parameter has to point to the location of this variable.
@@ -80,14 +74,14 @@ class PropProvider {
   }
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(PropProvider);
-
   // Find a property. This method will exit the program and print an
   // error message if the property cannot be found.
   GesturesProp* GetPropSafe(const std::string& name);
 
   // key-value pair mapping containing all properties.
   std::map<std::string, GesturesProp*> properties_;
+
+  DISALLOW_COPY_AND_ASSIGN(PropProvider);
 };
 
 // structure containing the function pointer to property creation

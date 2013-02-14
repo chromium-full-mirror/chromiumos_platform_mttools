@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <libevdev_mock.h>
-#include <util.h>
+#include "libevdev_mock.h"
 
 #include <gtest/gtest.h>
+
+#include "util.h"
 
 namespace replay {
 class LibEvDevTests : public ::testing::Test {

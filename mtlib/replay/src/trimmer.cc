@@ -2,25 +2,25 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <trimmer.h>
+#include "trimmer.h"
 
-#include <evemu_device.h>
-#include <libevdev_mock.h>
-#include <util.h>
+#include "evemu_device.h"
+#include "libevdev_mock.h"
+#include "util.h"
 
 namespace replay {
 
 Trimmer::Trimmer(ReplayDevice* replay)
     : replay_(replay) {
-
 }
 
-void Trimmer::WriteEvent(GenericOStream* out, struct timeval& time, __u16 type,
+void Trimmer::WriteEvent(Stream* out, const struct timeval& time, __u16 type,
                          __u16 code, __s32 value) {
   input_event event = { time, type, code, value };
-  evemu::EvemuDevice::WriteEvent(out->GetStream(), event);
+  evemu::EvemuDevice::WriteEvent(out->GetFP(), event);
 }
-void Trimmer::WriteCurrentState(GenericOStream* out, struct input_event* syn) {
+
+void Trimmer::WriteCurrentState(Stream* out, struct input_event* syn) {
   EventStatePtr evstate = replay_->current_state();
   Evdev* device = replay_->evdev_device();
 
@@ -67,18 +67,17 @@ void Trimmer::WriteCurrentState(GenericOStream* out, struct input_event* syn) {
       WriteEvent(out, syn->time, EV_KEY, i, 1);
     }
   }
-  evemu::EvemuDevice::WriteEvent(out->GetStream(), *syn);
+  evemu::EvemuDevice::WriteEvent(out->GetFP(), *syn);
 }
 
-bool Trimmer::Trim(GenericIStream* in, GenericOStream* out, double from,
+bool Trimmer::Trim(Stream* in, Stream* out, double from,
                    double to) {
   evemu::EvemuDevice* evemu = replay_->evemu_device();
 
   input_event event;
   bool trimming = true;
 
-  while (evemu->ReadEvent(in->GetStream(), &event)) {
-
+  while (evemu->ReadEvent(in->GetFP(), &event)) {
     // check timestamps only on SYN events.
     if (event.type == EV_SYN) {
       // check if we have reached the from timestamp.
@@ -94,17 +93,16 @@ bool Trimmer::Trim(GenericIStream* in, GenericOStream* out, double from,
         }
       } else if (timestamp >= to) {
         // we have reached the 'to' timestamp
-        evemu::EvemuDevice::WriteEvent(out->GetStream(), event);
+        evemu::EvemuDevice::WriteEvent(out->GetFP(), event);
         break;
       }
     }
-
     if (trimming) {
       // if we are trimming these events just replay them.
       replay_->ReplayEvent(event);
     } else {
       // write event to output stream
-      evemu::EvemuDevice::WriteEvent(out->GetStream(), event);
+      evemu::EvemuDevice::WriteEvent(out->GetFP(), event);
     }
   }
 

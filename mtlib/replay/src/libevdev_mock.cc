@@ -4,9 +4,9 @@
 
 #include <cstdarg>
 
-#include <libevdev_mock.h>
-#include <replay_device.h>
-#include <util.h>
+#include "libevdev_mock.h"
+#include "replay_device.h"
+#include "util.h"
 
 using evemu::EvemuDevice;
 using replay::ReplayDevice;
@@ -17,15 +17,11 @@ extern "C" {
 
 // Implements the log method used by libevdev. Passes all logs to ReplayDevice.
 static void EvdevLog(void* udata, int level, const char* format, ...) {
-  char buffer[1024];
+  ReplayDevice* device = reinterpret_cast<ReplayDevice*>(udata);
   va_list args;
   va_start(args, format);
-  vsnprintf(buffer, sizeof(buffer), format, args);
+  device->VLog(ReplayDeviceConfig::kLogEvdev, format, args);
   va_end(args);
-
-  std::string string(buffer);
-  ReplayDevice* device = reinterpret_cast<ReplayDevice*>(udata);
-  device->Log(ReplayDeviceConfig::kLogEvdev, string);
 }
 
 // Wrapper callback to pass the syn callback to ReplayDevice

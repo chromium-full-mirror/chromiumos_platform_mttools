@@ -5,12 +5,11 @@
 #ifndef EVDEV_GESTURES_H_
 #define EVDEV_GESTURES_H_
 
+#include <base/basictypes.h>
+#include <gestures/gestures.h>
 extern "C" {
 #include <libevdev/libevdev.h>
 }
-
-#include <base/basictypes.h>
-#include <gestures/gestures.h>
 
 namespace replay {
 
@@ -30,11 +29,11 @@ class EvdevGesture {
   void PushEventState(EventStatePtr, struct timeval* tv);
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(EvdevGesture);
-
   GestureInterpreter* interpreter_;
   EvdevPtr evdev_;
   struct FingerState* fingers_;
+
+  DISALLOW_COPY_AND_ASSIGN(EvdevGesture);
 };
 
 }  // namespace replay

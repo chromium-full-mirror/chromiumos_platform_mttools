@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <prop_provider.h>
+#include "prop_provider.h"
+
+#include <iostream>
 
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
 #include <base/values.h>
-#include <sstream>
 
-#include <generic_stream.h>
-#include <util.h>
+#include "util.h"
 
 namespace replay {
 
@@ -23,7 +23,7 @@ using base::JSONReader;
 // by a lexical_cast.
 template<typename Type>
 class GesturesPropImpl : public GesturesProp {
-public:
+ public:
   GesturesPropImpl(const char* name, Type* value)
       : name_(name), value_(value) {
   }
@@ -64,7 +64,7 @@ public:
     return name_;
   }
 
-private:
+ private:
   std::string name_;
   Type* value_;
 };
@@ -75,7 +75,7 @@ private:
 // lexical_casts.
 template<>
 class GesturesPropImpl<const char*> : public GesturesProp {
-public:
+ public:
   // TODO(denniskempin): numeric to string conversion
   GesturesPropImpl(const char* name, const char** value)
       : name_(name), value_(value) {
@@ -121,7 +121,7 @@ public:
     return name_;
   }
 
-private:
+ private:
   std::string name_;
   const char** value_;
   std::string local_;
@@ -156,13 +156,7 @@ GesturesProp* PropProvider::GetPropSafe(const std::string& name) {
   return prop;
 }
 
-bool PropProvider::Load(GenericIStream* stream) {
-  std::string data((std::istreambuf_iterator<char>(*stream->GetStream())),
-                   std::istreambuf_iterator<char>());
-  return LoadString(data);
-}
-
-bool PropProvider::LoadString(const std::string& data) {
+bool PropProvider::Load(const std::string& data) {
   int error_code;
   std::string error_msg;
   Value* root = JSONReader::ReadAndReturnError(data, true, &error_code,
