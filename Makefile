@@ -20,10 +20,25 @@ replay:
 clean:
 	OUT=. make -C mtlib/replay clean
 
-install: replay
-	# write source folder into pth file, which adds it to the module
-	# search path of python
-	echo "$(shell readlink -f .)" > $(PYTHON_SITE)/mttools.pth
+install:
+	# packaging not yet supported
+
+IN_PLACE_DEPS=../libevdev ../gestures mtlib/replay
+
+setup-in-place:
+	# utouch-evemu is currently required, but will be removed soon.
+	emerge utouch-evemu
+
+	$(foreach dep, $(IN_PLACE_DEPS), OUT=. make -C $(dep) setup-in-place;)
+
+	# add project folder to python path
+	echo "$(SRC)" > $(PYTHON_SITE)/mttools.pth
 
 	# install symlinks to command line tools
 	ln -sf $(SRC)/mtedit/main.py /usr/bin/mtedit
+
+clean-in-place:
+	$(foreach dep, $(IN_PLACE_DEPS), OUT=. make -C $(dep) clean-in-place;)
+
+in-place:
+	$(foreach dep, $(IN_PLACE_DEPS), OUT=. make -C $(dep) in-place;)

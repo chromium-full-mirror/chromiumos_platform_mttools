@@ -9,3 +9,7 @@ clean: CLEAN(replay)
 tests: CXX_BINARY(tests)
 install:
 	install -D -m 0755 $(OUT)/replay $(DESTDIR)/replay
+
+setup-in-place:
+clean-in-place: CLEAN(replay)
+in-place: CXX_BINARY(replay)
