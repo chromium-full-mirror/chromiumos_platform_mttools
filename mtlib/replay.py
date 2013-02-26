@@ -8,6 +8,16 @@ import os
 from threading import Thread
 from tempfile import NamedTemporaryFile
 
+
+def _GetAbsPath(path):
+  """
+    Helper method to return the normalized path of a path
+    relative to this script file
+  """
+  path = os.path.join(os.path.dirname(__file__), path)
+  return os.path.normpath(path)
+
+
 class Replay(object):
   """
   This class provides a high level interface to invoke a replay tool process.
@@ -24,6 +34,13 @@ class Replay(object):
     point to a file that contains the simulated's device data.
     """
     self._exe = path_to_exe
+
+    # setup LD_LIBRARY_PATH for in-place installs
+    libevdev_path = _GetAbsPath("../../libevdev/in-place")
+    gestures_path = _GetAbsPath("../../gestures/in-place")
+    self._env = os.environ.copy()
+    self._env["LD_LIBRARY_PATH"] = "%s;%s" % (libevdev_path, gestures_path)
+
     self._platform_file = platform_file
     self.evdev_log = None
     self.gestures_log = None
@@ -100,7 +117,7 @@ class Replay(object):
       parameters.extend(["--trim-to", str(trim_to)])
 
     # execute
-    process = Popen(parameters)
+    process = Popen(parameters, env=self._env)
     process.wait()
 
     # close temporary files
