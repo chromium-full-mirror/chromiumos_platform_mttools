@@ -15,13 +15,17 @@ SRC=$(shell readlink -f .)
 all: replay
 
 replay:
-	OUT=. make -C mtlib/replay all
+	OUT=. $(MAKE) -C mtlib/replay all
 
 clean:
-	OUT=. make -C mtlib/replay clean
+	OUT=. $(MAKE) -C mtlib/replay clean
 
-install:
-	# packaging not yet supported
+install: replay
+	mkdir -p $(DESTDIR)/mtedit
+	install -m 644 mtedit/*.py $(DESTDIR)/mtedit
+	mkdir -p $(DESTDIR)/mtlib/replay
+	install -m 644 mtlib/*.py $(DESTDIR)/mtlib
+	install mtlib/replay/replay $(DESTDIR)/mtlib/replay
 
 IN_PLACE_DEPS=../libevdev ../gestures mtlib/replay
 
