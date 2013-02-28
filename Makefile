@@ -45,4 +45,7 @@ clean-in-place:
 	$(foreach dep, $(IN_PLACE_DEPS), OUT=. make -C $(dep) clean-in-place;)
 
 in-place:
-	$(foreach dep, $(IN_PLACE_DEPS), OUT=. make -C $(dep) in-place;)
+	# can't use foreach loop here, otherwise make errors will be ignored.
+	make -C ../libevdev in-place
+	make -C ../gestures in-place
+	make -C mtlib/replay in-place
