@@ -534,6 +534,18 @@ FingerViewController.prototype = {
             yMin = Math.min(yMin, yPos);
             yMax = Math.max(yMax, yPos);
           }
+        } else if (entry.gestureType == 'swipeLift') {
+          segs.push({'type': GraphController.LINE,
+                     'start': {'xPos': xPos, 'yPos': yPos},
+                     'end': {'xPos': (xPos + buttonsDx),
+                             'yPos': (yPos - buttonsDy)},
+                     'color': '#660066'});
+          xPos += buttonsDx;
+          yPos -= buttonsDy;
+          xMin = Math.min(xMin, xPos);
+          xMax = Math.max(xMax, xPos);
+          yMin = Math.min(yMin, yPos);
+          yMax = Math.max(yMax, yPos);
         }
         segs.push({'type': GraphController.CIRCLE,
                    'center': {'xPos': xPos, 'yPos': yPos},
