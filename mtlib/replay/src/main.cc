@@ -107,12 +107,6 @@ int main(int argc, char** argv) {
     }
   }
 
-  // check if device/events file are present
-  if (!config.device.Good()) {
-    std::cerr << "device file is required" << std::endl;
-    return -1;
-  }
-
   if (!events.Good()) {
     std::cerr << "events file is required" << std::endl;
     return -1;

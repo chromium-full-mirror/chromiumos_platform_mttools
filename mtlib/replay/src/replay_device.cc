@@ -14,17 +14,19 @@ namespace replay {
 std::vector<ReplayDevice*> ReplayDevice::devices_;
 
 ReplayDevice::ReplayDevice(ReplayDeviceConfig* config)
-    : config_(config), evemu_device_(NULL), evdev_gesture_(NULL),
-      interpreter_(NULL), current_state_(NULL), current_time_(0),
-      timer_target_time_(0), timer_callback_(NULL),
+    : config_(config), has_device_data_(false), evemu_device_(NULL),
+      evdev_gesture_(NULL), interpreter_(NULL), current_state_(NULL),
+      current_time_(0), timer_target_time_(0), timer_callback_(NULL),
       timer_callback_udata_(NULL) {
   id_ = devices_.size();
   devices_.push_back(this);
 
   // read device file into evemu
   evemu_device_ = new evemu::EvemuDevice();
-  evemu_device_->ReadDeviceFile(config_->device.GetFP());
-
+  if (config_->device.Good()) {
+    evemu_device_->ReadDeviceFile(config_->device.GetFP());
+    has_device_data_ = true;
+  }
   // create libevdev mock
   evdev_device_ = NewEvdevMock(id_);
   interpreter_ = replay::NewGestureInterpreterMock(id_);
@@ -52,8 +54,16 @@ ReplayDevice::~ReplayDevice() {
 }
 
 void ReplayDevice::ReplayEvents(Stream* stream) {
+  // Try to read device info from log file. If it exists it will
+  // override any device info read from the device file.
+  int ret = EvdevReadInfoFromFile(stream->GetFP(), &evdev_device_->info);
+  if (!has_device_data_ && ret <= 0) {
+    std::cerr << "device file or device header in log is required" << std::endl;
+    exit(-1);
+  }
+
   struct input_event event;
-  while (evemu_device_->ReadEvent(stream->GetFP(), &event) > 0) {
+  while (EvdevReadEventFromFile(stream->GetFP(), &event) > 0) {
     ReplayEvent(event);
   }
 

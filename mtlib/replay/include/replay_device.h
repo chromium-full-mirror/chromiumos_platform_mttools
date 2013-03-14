@@ -69,7 +69,7 @@ class ReplayDevice {
   void ReplayEvent(const struct input_event& event);
 
   // Access to the current timestamp of libevdev.
-  double GetCurrentTime() {
+  double GetCurrentTime() const {
     return current_time_;
   }
 
@@ -108,15 +108,19 @@ class ReplayDevice {
   // Static method to access a device of a specific ID.
   static ReplayDevice* GetDevice(size_t id);
 
-  EventStatePtr current_state() {
+  EventStatePtr current_state() const {
     return current_state_;
   }
 
-  Evdev_* evdev_device() {
+  Evdev_* evdev_device() const {
     return evdev_device_;
   }
 
-  evemu::EvemuDevice* evemu_device() {
+  bool has_device_data() const {
+    return has_device_data_;
+  }
+
+  evemu::EvemuDevice* evemu_device() const {
     return evemu_device_;
   }
 
@@ -129,6 +133,9 @@ class ReplayDevice {
 
   // The id of this device, as used by GetDevice.
   int id_;
+
+  // True if device data has been loaded from file
+  bool has_device_data_;
 
   // The EvemuDevice is used to read event/device files.
   evemu::EvemuDevice* evemu_device_;

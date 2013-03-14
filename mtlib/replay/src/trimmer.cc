@@ -72,12 +72,21 @@ void Trimmer::WriteCurrentState(Stream* out, struct input_event* syn) {
 
 bool Trimmer::Trim(Stream* in, Stream* out, double from,
                    double to) {
-  evemu::EvemuDevice* evemu = replay_->evemu_device();
+  EvdevInfoPtr info = &replay_->evdev_device()->info;
+  // Try to read device info from log file. If it exists it will
+  // override any device info read from the device file.
+  int ret = EvdevReadInfoFromFile(in->GetFP(), info);
+  if (!replay_->has_device_data() && ret <= 0) {
+    std::cerr << "device file or device header in log is required" << std::endl;
+    exit(-1);
+  }
 
+  // Write device data to output log file
+  EvdevWriteInfoToFile(out->GetFP(), info);
   input_event event;
   bool trimming = true;
 
-  while (evemu->ReadEvent(in->GetFP(), &event)) {
+  while (EvdevReadEventFromFile(in->GetFP(), &event)) {
     // check timestamps only on SYN events.
     if (event.type == EV_SYN) {
       // check if we have reached the from timestamp.
