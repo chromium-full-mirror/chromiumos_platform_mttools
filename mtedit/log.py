@@ -108,6 +108,10 @@ class FeedbackLog(AbstractLog):
     # find file name containing match with latest timestamp
     names = filter(lambda n: n.find(match) >= 0, tar.getnames())
     names.sort()
+    if not names:
+      print "Cannot find files named %s in tar file" % match
+      print "Tar file contents:", tar.getnames()
+      sys.exit(-1)
     return tar.extractfile(names[-1])
 
   def _DownloadSystemLog(self, id, opener):
