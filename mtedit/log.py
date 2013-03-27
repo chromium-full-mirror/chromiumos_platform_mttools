@@ -16,7 +16,7 @@ import sys
 import tarfile
 import tempfile
 import urllib2
-
+import zipfile
 
 # path to current script directory
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -115,26 +115,47 @@ class FeedbackLog(AbstractLog):
     return tar.extractfile(names[-1])
 
   def _DownloadSystemLog(self, id, opener):
-    # First download the report.bz2 file
-    logfile = "report-%s-system_logs.bz2" % id
+    # First download the report.zip file
+    logfile = "report-%s-system_logs.zip" % id
     url = ("https://feedback.corp.googleusercontent.com/binarydata/"+
            "%s?id=%s&logIndex=0") % (logfile, id)
     report_bz2 = opener.open(url).read()
+    file("test.zip", "w").write(report_bz2)
 
-    if report_bz2[0:2] != "BZ":
-      # not a bzip file. Log in and try again.
+    if report_bz2[0:2] != "BZ" and report_bz2[0:2] != "PK":
+      # not a zip/bzip file. Log in and try again.
       self._Login(opener)
       report_bz2 = opener.open(url).read()
 
-    # unpack bzip file
-    self.system = bz2.decompress(report_bz2)
+    if report_bz2[0:2] == "BZ":
+      self.system = bz2.decompress(report_bz2)
+    elif report_bz2[0:2] == "PK":
+      io = StringIO(report_bz2)
+      zip = zipfile.ZipFile(io, "r")
+      self.system = zip.read(zip.namelist()[0])
+      zip.extractall("./")
+    else:
+      print "Cannot download logs file"
+      sys.exit(-1)
 
   def _ExtractLogFiles(self):
     # find embedded and uuencoded activity.tar in system log
     log_start = ("hack-33025-touchpad_activity=\"\"\"\n" +
                  "begin-base64 644 touchpad_activity_log.tar\n")
-    log_start_index = self.system.index(log_start) + len(log_start)
-    log_end_index = self.system.index("\"\"\"", log_start_index)
+    log_start2 = ("hack-33025-touchpad_activity=<multiline>\n" +
+                 "---------- START ----------\n" +
+                 "begin-base64 644 touchpad_activity_log.tar\n")
+    if log_start in self.system:
+      log_start_index = self.system.index(log_start) + len(log_start)
+      log_end_index = self.system.index("\"\"\"", log_start_index)
+    elif log_start2 in self.system:
+      log_start_index = self.system.index(log_start2) + len(log_start2)
+      log_end_index = self.system.index("---------- END ----------",
+                                        log_start_index)
+    else:
+      print "cannot find touchpad_activity_log.tar in systems log file"
+      sys.exit(-1)
+
     activity_tar_enc = self.system[log_start_index:log_end_index]
 
     # base64 decode
@@ -144,8 +165,39 @@ class FeedbackLog(AbstractLog):
     activity_tar_file = tarfile.open(fileobj=StringIO(activity_tar_data))
 
     # find latest log files
-    activity_gz = self._GetLatestFile("touchpad_activity", activity_tar_file)
-    evdev_gz = self._GetLatestFile("cmt_input_events", activity_tar_file)
+    logs = filter(lambda n: n.find("touchpad_activity") >= 0,
+                  activity_tar_file.getnames())
+    if len(logs) == 1:
+      idx = 0
+    else:
+      while True:
+        print "Which log file would you like to use?"
+        for i, name in enumerate(logs):
+          print i, name
+        print ">"
+        selection = sys.stdin.readline()
+        try:
+          idx = int(selection)
+          if idx < 0 or idx >= len(logs):
+            print "Number out of range"
+          else:
+            break
+        except:
+          print "Not a number"
+
+    activity_name = logs[idx]
+
+    # find matching evdev file
+    evdev_name = logs[idx][0:logs[idx].index("touchpad_activity")]
+    evdev_name = evdev_name + "cmt_input_events"
+
+    for name in activity_tar_file.getnames():
+      if name.startswith(evdev_name):
+        evdev_name = name
+        break
+
+    activity_gz = activity_tar_file.extractfile(activity_name)
+    evdev_gz = activity_tar_file.extractfile(evdev_name)
 
     # decompress log files
     self.activity = GzipFile(fileobj=activity_gz).read()
