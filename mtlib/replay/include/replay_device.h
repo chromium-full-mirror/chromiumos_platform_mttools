@@ -37,6 +37,9 @@ struct ReplayDeviceConfig {
     kLogCategoryCount
   };
 
+  // The device class used for replay
+  GestureInterpreterDeviceClass device_class;
+
   // Array containing all streams for log files
   Stream log[ReplayDeviceConfig::kLogCategoryCount];
 

@@ -72,10 +72,15 @@ int EvdevProbe(EvdevPtr device) {
     memcpy(&device->info.absinfo[i], &evemu->GetAbsinfo(i),
            sizeof(device->info.absinfo[i]));
   }
-  if (device->info.absinfo[ABS_X].resolution <= 0 ||
-      device->info.absinfo[ABS_Y].resolution <= 0 ||
-      device->info.absinfo[ABS_MT_POSITION_X].resolution <= 0 ||
-      device->info.absinfo[ABS_MT_POSITION_Y].resolution <= 0) {
+  const EvdevInfo& info = device->info;
+  if ((info.absinfo[ABS_X].maximum > 0 &&
+       info.absinfo[ABS_X].resolution <= 0) ||
+      (info.absinfo[ABS_Y].maximum > 0 &&
+       info.absinfo[ABS_Y].resolution <= 0) ||
+      (info.absinfo[ABS_MT_POSITION_X].maximum > 0 &&
+       info.absinfo[ABS_MT_POSITION_X].resolution <= 0) ||
+      (info.absinfo[ABS_MT_POSITION_Y].maximum > 0 &&
+       info.absinfo[ABS_MT_POSITION_Y].resolution <= 0)) {
     std::cerr << "Missing resolution field in device file" << std::endl;
     exit(1);
   }

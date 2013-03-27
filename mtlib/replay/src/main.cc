@@ -28,6 +28,8 @@ int main(int argc, char** argv) {
   replay::Stream trim_out;
   std::ifstream props;
 
+  config.device_class = GESTURES_DEVCLASS_TOUCHPAD;
+
   bool trim_enabled = false;
   double trim_from = -std::numeric_limits<double>::infinity();
   double trim_to = std::numeric_limits<double>::infinity();
@@ -43,6 +45,7 @@ int main(int argc, char** argv) {
       { "trim-from",  required_argument, 0, 'b'},
       { "trim-to",  required_argument, 0, 's'},
       { "trim-out",  required_argument, 0, 't'},
+      { "class",  required_argument, 0, 'c'},
       { 0, 0, 0, 0 }
     };
 
@@ -101,6 +104,20 @@ int main(int argc, char** argv) {
     case 't':
       trim_enabled = true;
       SafeOpen(&trim_out, optarg, "w");
+      break;
+    // class
+    case 'c':
+      if (strcmp(optarg, "touchpad") == 0)
+        config.device_class = GESTURES_DEVCLASS_TOUCHPAD;
+      else if (strcmp(optarg, "mouse") == 0)
+        config.device_class = GESTURES_DEVCLASS_MOUSE;
+      else if (strcmp(optarg, "multitouch_mouse") == 0)
+        config.device_class = GESTURES_DEVCLASS_MULTITOUCH_MOUSE;
+      else {
+        std::cerr << "--class should be touchpad, mouse or multitouch_mouse"
+                  << std::endl;
+        return -1;
+      }
       break;
     case '?':
       return -1;

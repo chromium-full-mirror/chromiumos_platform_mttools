@@ -28,7 +28,8 @@ class Replay(object):
   _default_executable_path = os.path.join(os.path.dirname(__file__),
                                           "replay/replay")
 
-  def __init__(self, platform_file, path_to_exe=_default_executable_path):
+  def __init__(self, platform_file, device_class=None,
+               path_to_exe=_default_executable_path):
     """
     Create a new instance of the replay tool. The platform_file has to
     point to a file that contains the simulated's device data.
@@ -42,6 +43,7 @@ class Replay(object):
     self._env["LD_LIBRARY_PATH"] = "%s;%s" % (libevdev_path, gestures_path)
 
     self._platform_file = platform_file
+    self._device_class = device_class
     self.evdev_log = None
     self.gestures_log = None
     self.activity_log = None
@@ -88,6 +90,9 @@ class Replay(object):
     parameters = [self._exe]
     parameters.extend(["--device", self._platform_file ])
     parameters.extend(["--events", events_file])
+
+    if self._device_class:
+      parameters.extend(["--class", self._device_class])
 
     if log_evdev:
       evdev_log_file = NamedTemporaryFile("r", delete=True)
