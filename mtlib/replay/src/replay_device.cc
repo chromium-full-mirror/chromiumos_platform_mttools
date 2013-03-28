@@ -27,6 +27,14 @@ ReplayDevice::ReplayDevice(ReplayDeviceConfig* config)
     evemu_device_->ReadDeviceFile(config_->device.GetFP());
     has_device_data_ = true;
   }
+  // load properties from properties file
+  if (!config->properties.empty()) {
+    if (!properties_.Load(config->properties)) {
+      std::cerr << "Failed loading properties file" << std::endl;
+      exit(-1);
+    }
+  }
+
   // create libevdev mock
   evdev_device_ = NewEvdevMock(id_);
   interpreter_ = replay::NewGestureInterpreterMock(id_);
@@ -35,12 +43,9 @@ ReplayDevice::ReplayDevice(ReplayDeviceConfig* config)
 
   interpreter_->Initialize(config_->device_class);
 
-  // load properties from properties file
-  if (!config->properties.empty()) {
-    if (!properties_.Load(config->properties)) {
-      std::cerr << "Failed loading properties file" << std::endl;
-      exit(-1);
-    }
+  if (!properties_.CheckIntegrity()) {
+    std::cerr << "Property Integrity Error" << std::endl;
+    exit(-1);
   }
 
   // init fake device hardware properties

@@ -18,9 +18,6 @@ using base::Value;
 using base::JSONReader;
 
 // Implementation of GesturesProp for all numerical types
-// Conversion between numerical types is handled implicitly by
-// the assignment operator. Conversion to string is handled
-// by a lexical_cast.
 template<typename Type>
 class GesturesPropImpl : public GesturesProp {
  public:
@@ -28,36 +25,8 @@ class GesturesPropImpl : public GesturesProp {
       : name_(name), value_(value) {
   }
 
-  virtual void SetValue(int value) {
-    *value_ = value;
-  }
-  virtual void SetValue(short value) {
-    *value_ = value;
-  }
-  virtual void SetValue(bool value) {
-    *value_ = value;
-  }
-  virtual void SetValue(double value) {
-    *value_ = value;
-  }
-  virtual void GetValue(int* value) {
-    *value = *value_;
-  }
-  virtual void GetValue(short* value) {
-    *value = *value_;
-  }
-  virtual void GetValue(bool* value) {
-    *value = *value_;
-  }
-  virtual void GetValue(double* value) {
-    *value = *value_;
-  }
-
   virtual void SetValue(const std::string& value) {
     *value_ = lexical_cast<Type>(value);
-  }
-  virtual void GetValue(std::string* value) {
-    *value = lexical_cast<std::string>(value_);
   }
 
   virtual std::string GetName() {
@@ -70,53 +39,19 @@ class GesturesPropImpl : public GesturesProp {
 };
 
 // GesturesProp implementation for string properties.
-// This requires a local string instance to store the result
-// of conversions. All conversions are implemented using
-// lexical_casts.
+// This requires a local string instance to store a copy of the value.
 template<>
 class GesturesPropImpl<const char*> : public GesturesProp {
  public:
-  // TODO(denniskempin): numeric to string conversion
   GesturesPropImpl(const char* name, const char** value)
       : name_(name), value_(value) {
-  }
-
-  virtual void SetValue(int value) {
-    local_ = lexical_cast<std::string>(value);
-    *value_ = local_.c_str();
-  }
-  virtual void SetValue(short value) {
-    local_ = lexical_cast<std::string>(value);
-    *value_ = local_.c_str();
-  }
-  virtual void SetValue(bool value) {
-    local_ = lexical_cast<std::string>(value);
-    *value_ = local_.c_str();
-  }
-  virtual void SetValue(double value) {
-    local_ = lexical_cast<std::string>(value);
-    *value_ = local_.c_str();
-  }
-  virtual void GetValue(int* value) {
-    *value = lexical_cast<int>(*value_);
-  }
-  virtual void GetValue(short* value) {
-    *value = lexical_cast<short>(*value_);
-  }
-  virtual void GetValue(bool* value) {
-    *value = lexical_cast<bool>(*value_);
-  }
-  virtual void GetValue(double* value) {
-    *value = lexical_cast<int>(*value_);
   }
 
   virtual void SetValue(const std::string& value) {
     local_ = value;
     *value_ = local_.c_str();
   }
-  virtual void GetValue(std::string* value) {
-    *value = *value_;
-  }
+
   virtual std::string GetName() {
     return name_;
   }
@@ -138,11 +73,28 @@ PropProvider::~PropProvider() {
   properties_.clear();
 }
 
+bool PropProvider::CheckIntegrity() {
+  if (properties_cache_.size() > 0) {
+    typedef std::map<std::string, std::string>::iterator iter_t;
+    for (iter_t iter = properties_cache_.begin();
+         iter != properties_cache_.end(); ++iter) {
+      std::cerr << "Unknown Property: " << iter->first << std::endl;
+    }
+    return false;
+  }
+  return true;
+}
+
 template<typename Type>
 GesturesProp* PropProvider::CreateProp(const char* name, Type* loc,
                                        const Type init) {
-  *loc = init;
   GesturesProp* prop = new GesturesPropImpl<Type>(name, loc);
+  if (properties_cache_.find(name) != properties_cache_.end()) {
+    prop->SetValue(properties_cache_[name]);
+    properties_cache_.erase(name);
+  } else {
+    *loc = init;
+  }
   properties_[std::string(name)] = prop;
   return prop;
 }
@@ -178,35 +130,40 @@ bool PropProvider::Load(const std::string& data) {
     Value* value;
 
     dict->GetWithoutPathExpansion(*iter, &value);
+    std::string stringVal;
     switch (value->GetType()) {
     case Value::TYPE_INTEGER: {
       int intVal;
       value->GetAsInteger(&intVal);
-      SetValue<int>(*iter, intVal);
+      stringVal = lexical_cast<std::string>(intVal);
       break;
     }
     case Value::TYPE_BOOLEAN: {
       bool boolVal;
       value->GetAsBoolean(&boolVal);
-      SetValue<GesturesPropBool>(*iter, boolVal);
+      stringVal = lexical_cast<std::string>(boolVal);
       break;
     }
     case Value::TYPE_DOUBLE: {
       double doubleVal;
       value->GetAsDouble(&doubleVal);
-      SetValue<double>(*iter, doubleVal);
+      stringVal = lexical_cast<std::string>(doubleVal);
       break;
     }
     case Value::TYPE_STRING: {
-      std::string stringVal;
       value->GetAsString(&stringVal);
-      SetValue<std::string>(*iter, stringVal);
       break;
     }
     default:
       std::cerr << "Invalid property type: " << *iter << std::endl;
       std::cerr << "Expected Integer, Boolean, Double or String" << std::endl;
       return false;
+    }
+
+    if (properties_.find(*iter) == properties_.end()) {
+      properties_cache_[*iter] = stringVal;
+    } else {
+      GetPropSafe(*iter)->SetValue(stringVal);
     }
   }
   return true;

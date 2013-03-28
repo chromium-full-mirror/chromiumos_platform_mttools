@@ -15,16 +15,7 @@
 // This structure declares virtual overloaded get/set methods to access the
 // property value and convert it to different data types.
 struct GesturesProp {
-  virtual void SetValue(int value) = 0;
-  virtual void SetValue(short value) = 0;
-  virtual void SetValue(bool value) = 0;
-  virtual void SetValue(double value) = 0;
   virtual void SetValue(const std::string& value) = 0;
-  virtual void GetValue(int* value) = 0;
-  virtual void GetValue(short* value) = 0;
-  virtual void GetValue(bool* value) = 0;
-  virtual void GetValue(double* value) = 0;
-  virtual void GetValue(std::string* value) = 0;
 
   virtual std::string GetName() = 0;
   virtual ~GesturesProp() {
@@ -58,20 +49,8 @@ class PropProvider {
   // Free a previously created property
   void Free(GesturesProp* prop);
 
-  // Set a property to a value of any supported type. The value will
-  // automatically be converted to the type of the property.
-  template<typename Type>
-  void SetValue(const std::string& name, Type value) {
-    GetPropSafe(name)->SetValue(value);
-  }
-
-  // Read a property value and convert it to one of the supported types.
-  template<typename Type>
-  Type GetValue(const std::string& name) {
-    Type value;
-    GetPropSafe(name)->GetValue(&value);
-    return value;
-  }
+  // Check if any loaded properties do not exist in the registry
+  bool CheckIntegrity();
 
  private:
   // Find a property. This method will exit the program and print an
@@ -80,6 +59,10 @@ class PropProvider {
 
   // key-value pair mapping containing all properties.
   std::map<std::string, GesturesProp*> properties_;
+
+  // key-value mapping for properties that are loaded before
+  // they were created by gestures.
+  std::map<std::string, std::string> properties_cache_;
 
   DISALLOW_COPY_AND_ASSIGN(PropProvider);
 };
