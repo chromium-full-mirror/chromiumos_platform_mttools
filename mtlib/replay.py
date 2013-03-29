@@ -85,6 +85,7 @@ class Replay(object):
     evdev_log_file = None
     gestures_log_file = None
     activity_log_file = None
+    working_dir = os.path.dirname(events_file)
 
     # translate arguments to command line parameters
     parameters = [self._exe]
@@ -122,7 +123,7 @@ class Replay(object):
       parameters.extend(["--trim-to", str(trim_to)])
 
     # execute
-    process = Popen(parameters, env=self._env)
+    process = Popen(parameters, env=self._env, cwd=working_dir)
     process.wait()
 
     # close temporary files
