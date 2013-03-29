@@ -32,6 +32,8 @@ def Log(source, options):
     download, a url pointing to a feedback report to pull or a filename.
   """
   if os.path.exists(source):
+    if source.endswith(".zip") or source.endswith(".bz2"):
+      return FeedbackLog(source, None)
     return FileLog(source, options)
   else:
     match = re.search("Report/([0-9]+)", source)
@@ -71,17 +73,21 @@ class FileLog(AbstractLog):
 
 class FeedbackLog(AbstractLog):
   """
-    Downloads logs from a feedback id.
+    Downloads logs from a feedback id or file name
   """
-  def __init__(self, id, options):
-    # setup cookies file and url opener
-    self.cookies = cookielib.MozillaCookieJar(cookies_file)
-    if os.path.exists(cookies_file):
-      self.cookies.load()
-    cookie_processor = urllib2.HTTPCookieProcessor(self.cookies)
-    opener = urllib2.build_opener(cookie_processor)
+  def __init__(self, id_or_filename, options):
+    if id_or_filename.endswith(".zip") or id_or_filename.endswith(".bz2"):
+      self.report = open(id_or_filename).read()
+    else:
+      # setup cookies file and url opener then download the report archive
+      self.cookies = cookielib.MozillaCookieJar(cookies_file)
+      if os.path.exists(cookies_file):
+        self.cookies.load()
+      cookie_processor = urllib2.HTTPCookieProcessor(self.cookies)
+      opener = urllib2.build_opener(cookie_processor)
+      self._DownloadSystemLog(id_or_filename, opener)
 
-    self._DownloadSystemLog(id, opener)
+    self._ExtractSystemLog()
     self._ExtractLogFiles()
 
   def _Login(self, opener):
@@ -119,18 +125,19 @@ class FeedbackLog(AbstractLog):
     logfile = "report-%s-system_logs.zip" % id
     url = ("https://feedback.corp.googleusercontent.com/binarydata/"+
            "%s?id=%s&logIndex=0") % (logfile, id)
-    report_bz2 = opener.open(url).read()
-    file("test.zip", "w").write(report_bz2)
+    self.report = opener.open(url).read()
+    file("test.zip", "w").write(self.report)
 
-    if report_bz2[0:2] != "BZ" and report_bz2[0:2] != "PK":
+    if self.report[0:2] != "BZ" and self.report[0:2] != "PK":
       # not a zip/bzip file. Log in and try again.
       self._Login(opener)
-      report_bz2 = opener.open(url).read()
+      self.report = opener.open(url).read()
 
-    if report_bz2[0:2] == "BZ":
-      self.system = bz2.decompress(report_bz2)
-    elif report_bz2[0:2] == "PK":
-      io = StringIO(report_bz2)
+  def _ExtractSystemLog(self):
+    if self.report[0:2] == "BZ":
+      self.system = bz2.decompress(self.report)
+    elif self.report[0:2] == "PK":
+      io = StringIO(self.report)
       zip = zipfile.ZipFile(io, "r")
       self.system = zip.read(zip.namelist()[0])
       zip.extractall("./")
@@ -140,16 +147,21 @@ class FeedbackLog(AbstractLog):
 
   def _ExtractLogFiles(self):
     # find embedded and uuencoded activity.tar in system log
-    log_start = ("hack-33025-touchpad_activity=\"\"\"\n" +
+    log_start1 = ("hack-33025-touchpad_activity=\"\"\"\n" +
                  "begin-base64 644 touchpad_activity_log.tar\n")
-    log_start2 = ("hack-33025-touchpad_activity=<multiline>\n" +
+    log_start2 = ("touchpad_activity=\"\"\"\n" +
+                 "begin-base64 644 touchpad_activity_log.tar\n")
+    log_start3 = ("hack-33025-touchpad_activity=<multiline>\n" +
                  "---------- START ----------\n" +
                  "begin-base64 644 touchpad_activity_log.tar\n")
-    if log_start in self.system:
-      log_start_index = self.system.index(log_start) + len(log_start)
+    if log_start1 in self.system:
+      log_start_index = self.system.index(log_start1) + len(log_start1)
       log_end_index = self.system.index("\"\"\"", log_start_index)
     elif log_start2 in self.system:
       log_start_index = self.system.index(log_start2) + len(log_start2)
+      log_end_index = self.system.index("\"\"\"", log_start_index)
+    elif log_start3 in self.system:
+      log_start_index = self.system.index(log_start3) + len(log_start3)
       log_end_index = self.system.index("---------- END ----------",
                                         log_start_index)
     else:
