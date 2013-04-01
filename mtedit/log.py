@@ -65,7 +65,9 @@ class FileLog(AbstractLog):
     self.activity = open(filename).read()
     self.evdev = ""
     self.system = ""
-    if os.path.exists(filename + ".evdev"):
+    if options.evdev:
+      self.evdev = open(options.evdev).read()
+    elif os.path.exists(filename + ".evdev"):
       self.evdev = open(filename + ".evdev").read()
     if os.path.exists(filename + ".system"):
       self.system = open(filename + ".system").read()

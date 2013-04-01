@@ -32,6 +32,9 @@ def main(argv):
   parser.add_option("-d", "--download",
                     action="store_true", dest="download", default=False,
                     help="download file only, don't edit.")
+  parser.add_option("-e", "--evdev",
+                    dest="evdev", default=None,
+                    help="path to local evdev log file")
   parser.add_option("-n", "--new",
                     dest="new", action="store_true", default=False,
                     help="Create new device logs before downloading. "+
