@@ -48,25 +48,27 @@ class Replay(object):
     self.gestures_log = None
     self.activity_log = None
 
-  def Trim(self, events_file, trim_out, trim_from=None, trim_to=None):
+  def Trim(self, events_file, trim_out, trim_from=None, trim_to=None,
+           gdb_mode=False):
     """
     Shorthand for _execute. Stores trimed version of events_file
     in trim_out.
     """
     self._Execute(events_file, None, False, False, False,
-           trim_out, trim_from, trim_to)
+           trim_out, trim_from, trim_to, gdb_mode=gdb_mode)
 
-  def Replay(self, events_file, properties=None, debug=False):
+  def Replay(self, events_file, properties=None, debug=False, gdb_mode=False):
     """
     Shorthand for _execute. debug=True/False enables or disables extra logs.
     This method always returns the activity log as a string.
     """
-    self._Execute(events_file, properties, debug, debug, True)
+    self._Execute(events_file, properties, debug, debug, True,
+                  gdb_mode=gdb_mode)
     return self.activity_log
 
   def _Execute(self, events_file, properties=None,
          log_evdev=True, log_gestures=True, log_activity=True,
-         trim_out=None, trim_from=None, trim_to=None):
+         trim_out=None, trim_from=None, trim_to=None, gdb_mode=False):
     """
     executes a replay process. The method arguments are translated to
     command line arguments for the process.
@@ -123,6 +125,9 @@ class Replay(object):
       parameters.extend(["--trim-to", str(trim_to)])
 
     # execute
+    if gdb_mode:
+      parameters = ["gdb", "--args"] + parameters
+
     process = Popen(parameters, env=self._env, cwd=working_dir)
     process.wait()
 
@@ -143,4 +148,6 @@ class Replay(object):
       properties_file.close()
 
     if process.returncode != 0:
+      print "Gestures Log: "
+      print self.gestures_log
       raise Exception("Process error: ", " ".join(parameters))
