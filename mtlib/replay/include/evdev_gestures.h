@@ -13,6 +13,8 @@ extern "C" {
 
 namespace replay {
 
+class PropProvider;
+
 // class wrapping the GestureInterpreter. It allows the GestureInterpreter
 // to be used with structures provided by libevdev.
 class EvdevGesture {
@@ -23,7 +25,8 @@ class EvdevGesture {
 
   // Initialize a HardwareProperties structure with data read from an evdev
   // device.
-  void InitHardwareProperties(struct HardwareProperties*);
+  void InitHardwareProperties(struct HardwareProperties*,
+                              PropProvider* properties);
 
   // Push an libevdev event state to the GestureInterpreter.
   void PushEventState(EventStatePtr, struct timeval* tv);

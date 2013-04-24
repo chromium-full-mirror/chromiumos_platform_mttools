@@ -43,14 +43,19 @@ ReplayDevice::ReplayDevice(ReplayDeviceConfig* config)
 
   interpreter_->Initialize(config_->device_class);
 
+  // init fake device hardware properties
+  struct HardwareProperties hwprops;
+  evdev_gesture_->InitHardwareProperties(&hwprops, &properties_);
+
+  // this property is unused but xorg conf file sets it
+  int accel_profile = 0;
+  properties_.GetPropValue("AccelerationProfile", &accel_profile);
+
   if (!properties_.CheckIntegrity()) {
     std::cerr << "Property Integrity Error" << std::endl;
     exit(-1);
   }
 
-  // init fake device hardware properties
-  struct HardwareProperties hwprops;
-  evdev_gesture_->InitHardwareProperties(&hwprops);
   interpreter_->SetHardwareProperties(hwprops);
 }
 

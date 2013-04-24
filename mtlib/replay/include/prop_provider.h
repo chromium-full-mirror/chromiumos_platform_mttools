@@ -11,6 +11,8 @@
 #include <base/basictypes.h>
 #include <gestures/gestures.h>
 
+#include "util.h"
+
 // Declared by gestures library. Implemented here.
 // This structure declares virtual overloaded get/set methods to access the
 // property value and convert it to different data types.
@@ -45,6 +47,17 @@ class PropProvider {
   // It will be initialized with the value from the parameter init.
   template<typename Type>
   GesturesProp* CreateProp(const char* name, Type* loc, const Type init);
+
+  // Read a property.
+  // The value parameter will store the property value, and will not be
+  // modified if the property does not exist.
+  template<typename Type>
+  void GetPropValue(const char* name, Type* value) {
+    if (properties_cache_.find(name) != properties_cache_.end()) {
+      *value = lexical_cast<Type>(properties_cache_[name]);
+      properties_cache_.erase(name);
+    }
+  }
 
   // Free a previously created property
   void Free(GesturesProp* prop);

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "evdev_gestures.h"
+#include "prop_provider.h"
 
 namespace replay {
 
@@ -18,13 +19,20 @@ EvdevGesture::~EvdevGesture() {
   fingers_ = NULL;
 }
 
-void EvdevGesture::InitHardwareProperties(struct HardwareProperties* hwprops) {
+void EvdevGesture::InitHardwareProperties(struct HardwareProperties* hwprops,
+                                          PropProvider* properties) {
   hwprops->left = Event_Get_Left(evdev_);
+  properties->GetPropValue("Active Area Left", &hwprops->left);
   hwprops->top = Event_Get_Top(evdev_);
+  properties->GetPropValue("Active Area Top", &hwprops->top);
   hwprops->right = Event_Get_Right(evdev_);
+  properties->GetPropValue("Active Area Right", &hwprops->right);
   hwprops->bottom = Event_Get_Bottom(evdev_);
+  properties->GetPropValue("Active Area Bottom", &hwprops->bottom);
   hwprops->res_x = Event_Get_Res_X(evdev_);
+  properties->GetPropValue("Horizontal Resolution", &hwprops->res_x);
   hwprops->res_y = Event_Get_Res_Y(evdev_);
+  properties->GetPropValue("Vertical Resolution", &hwprops->res_y);
   hwprops->screen_x_dpi = 133;
   hwprops->screen_y_dpi = 133;
   hwprops->orientation_minimum = Event_Get_Orientation_Minimum(evdev_);
