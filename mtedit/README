@@ -1,0 +1,26 @@
+Multitouch Viewer/Editor
+========================
+
+Configuration
+-------------
+
+Ensure that the parent mttools folder is on the PYTHONPATH environment variable.
+This can be done either manually or running "make setup-in-place" in the parent
+folder mttools (within chroot).
+
+Usage
+-----
+
+If "make setup-in-place" was used then the simple "mtedit" command can replace
+the ./main.py calls.
+
+Viewing logs:
+./main.py filename.log (from file)
+./main.py 172.22.75.0 (from device ip address)
+./main.py http://feedback.google.com/... (from feedback report url)
+
+Edit log and save result into output.log:
+./main.py log -o output.log
+
+Download log and save without editing:
+./main.py log -d -o output.log
