@@ -1,7 +1,7 @@
 <html>
   <head>
     <meta http-equiv="Content-type" content="text/html; charset=utf-8">
-    <title>Touchpad Log Viewer</title>
+    <title>Multi-Touch Log Viewer</title>
     <link type="text/css" href="css/smoothness/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
     <script src="js/jquery-1.6.4.min.js"></script>
     <script src="js/jquery.mousewheel.js"></script>
@@ -189,17 +189,23 @@ function convertEventStreamToEntries(data) {
       }
     }
   }
-  // For touch screens the absolute value is more useful than the scaled value.
+  // For touchscreens the absolute value is more useful than the scaled value.
   obj.hardwareProperties.xResolution = 1.0;
   obj.hardwareProperties.yResolution = 1.0;
   return obj;
 }
 
+/**
+ * Loads the log frames from json.
+ * @param {Object} obj Event structure expected by loadLogObj.
+ */
 function loadLog(obj) {
     if (!obj) {
       alert('Unrecognized input file');
       return;
     }
+    // If obj.isTouchScreen is true, then manually switch to touchscreen mode
+    $('#touchscreen-toggle').attr('checked', !!obj.isTouchscreen).trigger('change');
     json_obj = obj;
     generateRadioButtons(obj);
     current_layer = 0;
@@ -208,10 +214,12 @@ function loadLog(obj) {
 
 function convertStrToLog(str) {
   var obj;
-  if (str[0] == '#' || str[0] == 'E') {
+  if (str[0] == '#' || str[0] == 'E') {  // A touchscreen log
     obj = convertEventStreamToEntries(str);
-  } else if (str[0] == '{') {
+    obj.isTouchscreen = true;
+  } else if (str[0] == '{') {  // A touchpad log
     obj = jQuery.parseJSON(str);
+    obj.isTouchscreen = false;
   }
   return obj;
 }
@@ -423,6 +431,26 @@ function radioChange(e) {
   }
 }
 
+function touchscreenToggle() {
+  var isTouchscreen = false;
+  var inputWidth = '';
+  var canvasWidth = 480, canvasHeight = 320;
+  var canvas;
+  if ($(this).is(':checked')) {
+    isTouchscreen = true;
+    inputWidth = 1100;
+    canvasWidth = 1080;
+    canvasHeight = 720;
+  }
+  $('.pad').toggle(!isTouchscreen);
+  $('.screen').toggle(isTouchscreen);
+  $('#inputview').width(inputWidth);
+  canvas = document.getElementById('fview');
+  canvas.setAttribute('width', canvasWidth);
+  canvas.setAttribute('height', canvasHeight);
+  finger_view_controller.resetZooms();
+}
+
 function extractActivityLog(tar) {
   // a tar file is a sequence of 512 byte blocks. Starting with a header block
   // followed by the contents of that file, repeated for as many files
@@ -498,6 +526,8 @@ $(document).ready(function() {
   var inGc = new GraphController($('#fview'));
   finger_view_controller = new FingerViewController(inGc, gc, $('#intext'),
                                                     $('#out-lock-head'));
+
+  $("#touchscreen-toggle").change(touchscreenToggle);
   $("#out-resetzoom").button({
     icons: {
       primary: "ui-icon-arrow-4-diag"
@@ -642,15 +672,17 @@ $(document).ready(function() {
   </head>
   <body>
     <div id="container">
-      <h2>Touchpad Activity Viewer</h2>
+      <input type="checkbox" id="touchscreen-toggle">Touchscreen</input>
       <div id="viewer">
-        <div class="viewspan">
-          <h3>Input</h3>
+        <h2 class="pad">Touchpad Activity Viewer</h2>
+        <h2 class="screen">Touchscreen Viewer</h2>
+        <div class="viewspan" id="inputview">
+          <h3 class="pad">Input</h3>
           <canvas class="view" id="fview" width="480" height="320"></canvas><br/>
           <button class="button" id="in-resetzoom">Reset Zoom</button>
           <div id="intext">Time: 123123123.123<br/>Finger Cnt: 2<br/>Touch Cnt: 2</div>
         </div>
-        <div class="viewspan">
+        <div class="viewspan pad">
           <h3>Output</h3>
           <canvas class="view" id="gview" width="480" height="320"></canvas><br/>
           <button class="button" id="out-resetzoom">Reset Zoom</button>
@@ -695,7 +727,7 @@ $(document).ready(function() {
         <h2>Load/Save Activity Log</h2>
         <div id="textdiv">
           <h3>From Text File</h3>
-          <textarea id="text_box">Drag and drop a touchpad log file here.</textarea></div>
+          <textarea id="text_box">Drag and drop a touchpad/touchscreen log file here.</textarea></div>
         <div id="feedbackupload">
           <h3>From Feedback Report</h3>
           Load from Feedback Report: <input type="file" id="bzipupload"></input>
