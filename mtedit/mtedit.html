@@ -207,6 +207,16 @@ function loadLog(obj) {
     loadLogObj(obj, true);
 }
 
+function convertStrToLog(str) {
+  var obj;
+  if (str[0] == '#' || str[0] == 'E') {
+    obj = convertEventStreamToEntries(str);
+  } else if (str[0] == '{') {
+    obj = jQuery.parseJSON(str);
+  }
+  return obj;
+}
+
 function handleFileSelect(evt) {
   $('#text_box').removeClass('text_box_hilight');
   evt.stopPropagation();
@@ -217,13 +227,7 @@ function handleFileSelect(evt) {
   var file = files[0];
   var reader = new FileReader();
   reader.onload = function(e) {
-    var obj;
-    $('#text_box').val(e.target.result);
-    if (e.target.result[0] == '#')
-      obj = convertEventStreamToEntries(e.target.result);
-    else if (e.target.result[0] == '{')
-      obj = jQuery.parseJSON(e.target.result);
-    loadLog(obj);
+    loadLog(convertStrToLog(e.target.result));
   };
   reader.readAsText(file);
 }
@@ -615,11 +619,10 @@ $(document).ready(function() {
       var log_gz = extractActivityLog(touchpad_tar);
 
       // extract log.gz
-      var log = (new JXG.Util.Unzip(new Uint8Array(log_gz))).unzip()[0][0];
+      var log_data = (new JXG.Util.Unzip(new Uint8Array(log_gz))).unzip()[0][0];
 
       // parse as json and load
-      var log_obj = jQuery.parseJSON(log);
-      loadLog(log_obj);
+      loadLog(convertStrToLog(log_data));
     };
     reader.readAsArrayBuffer(document.getElementById('bzipupload').files[0]);
   });
@@ -629,8 +632,8 @@ $(document).ready(function() {
 
   if (use_server) {
     $.get('/load/' + logname, function(data) {
-      loadLog(data);
-    }, 'json');
+      loadLog(convertStrToLog(data));
+    }, 'text');
   } else {
     loadLog(secret_obj);
   }
