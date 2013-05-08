@@ -82,11 +82,14 @@ bool Trimmer::Trim(Stream* in, Stream* out, double from,
   }
 
   // Write device data to output log file
-  EvdevWriteInfoToFile(out->GetFP(), info);
+  if (EvdevWriteInfoToFile(out->GetFP(), info) <= 0) {
+    std::cerr << "EvdevWriteInfoToFile failed" << std::endl;
+    exit(-1);
+  }
   input_event event;
   bool trimming = true;
 
-  while (EvdevReadEventFromFile(in->GetFP(), &event)) {
+  while (EvdevReadEventFromFile(in->GetFP(), &event) > 0) {
     // check timestamps only on SYN events.
     if (event.type == EV_SYN) {
       // check if we have reached the from timestamp.
