@@ -53,20 +53,11 @@ h2, h3 {
 	margin: 0.3em 0 0 1em;
 }
 
-.screenshot {
-	background-image: url(screenshot.jpg);
-	background-repeat: no-repeat;
-	background-size: cover;
-}
-
-.view-container {
-	margin: 0.3em auto 0 auto;
-}
-
 .view {
 	/*box-shadow: inset #888 0 2px 10px;*/
 	border: 1px solid #ccc;
 	display: block;
+	margin: 0.3em auto 0 auto;
 }
 
 .button {
