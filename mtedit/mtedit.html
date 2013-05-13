@@ -1,3 +1,4 @@
+<!DOCTYPE HTML>
 <html>
   <head>
     <meta http-equiv="Content-type" content="text/html; charset=utf-8">
@@ -445,6 +446,9 @@ function touchscreenToggle() {
   $('.pad').toggle(!isTouchscreen);
   $('.screen').toggle(isTouchscreen);
   $('#inputview').width(inputWidth);
+  $('#fcanvas').toggleClass('screenshot', isTouchscreen);
+  $('.view-container').width(canvasWidth);
+  $('.view-container').height(canvasHeight);
   canvas = document.getElementById('fview');
   canvas.setAttribute('width', canvasWidth);
   canvas.setAttribute('height', canvasHeight);
@@ -678,13 +682,18 @@ $(document).ready(function() {
         <h2 class="screen">Touchscreen Viewer</h2>
         <div class="viewspan" id="inputview">
           <h3 class="pad">Input</h3>
-          <canvas class="view" id="fview" width="480" height="320"></canvas><br/>
+          <div class="view-container screenshot" id="fcanvas">
+            <canvas class="view" id="fview" width="480" height="320"></canvas>
+          </div>
+          <br/>
           <button class="button" id="in-resetzoom">Reset Zoom</button>
           <div id="intext">Time: 123123123.123<br/>Finger Cnt: 2<br/>Touch Cnt: 2</div>
         </div>
         <div class="viewspan pad">
           <h3>Output</h3>
-          <canvas class="view" id="gview" width="480" height="320"></canvas><br/>
+          <div class="view-container">
+            <canvas class="view" id="gview" width="480" height="320"></canvas>
+          <br/>
           <button class="button" id="out-resetzoom">Reset Zoom</button>
           <input type="checkbox" id="out-lock-head" />
           <label for="out-lock-head">Lock Head Location</label>

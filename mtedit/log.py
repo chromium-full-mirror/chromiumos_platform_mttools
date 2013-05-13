@@ -33,7 +33,7 @@ def Log(source, options):
   """
   if os.path.exists(source):
     if source.endswith(".zip") or source.endswith(".bz2"):
-      return FeedbackLog(source, None)
+      return FeedbackLog(source, options)
     return FileLog(source, options)
   else:
     match = re.search("Report/([0-9]+)", source)
@@ -46,8 +46,8 @@ def Log(source, options):
 
 class AbstractLog(object):
   """
-    A log file consists of the activity log, the evdev log and
-    a system log which can be saved to disk all together.
+    A log file consists of the activity log, the evdev log, a system log, and
+    possibly a screenshot, which can be saved to disk all together.
   """
   def SaveAs(self, filename):
     open(filename, "w").write(self.activity)
@@ -55,6 +55,12 @@ class AbstractLog(object):
       open(filename + ".evdev", "w").write(self.evdev)
     if self.system:
       open(filename + ".system", "w").write(self.system)
+    if self.image:
+      open(filename + ".jpg", "w").write(self.image)
+
+  def CleanUp(self):
+    if os.path.exists("screenshot.jpg"):
+      os.remove("screenshot.jpg")
 
 
 class FileLog(AbstractLog):
@@ -65,17 +71,21 @@ class FileLog(AbstractLog):
     self.activity = open(filename).read()
     self.evdev = ""
     self.system = ""
+    self.image = None
     if options.evdev:
       self.evdev = open(options.evdev).read()
     elif os.path.exists(filename + ".evdev"):
       self.evdev = open(filename + ".evdev").read()
     if os.path.exists(filename + ".system"):
       self.system = open(filename + ".system").read()
+    if os.path.exists(filename + ".jpg"):
+      self.image = open(filename + ".jpg").read()
+      file("screenshot.jpg", "w").write(self.image)
 
 
 class FeedbackLog(AbstractLog):
   """
-    Downloads logs from a feedback id or file name
+    Downloads logs and (possibly) screenshot from a feedback id or file name
   """
   def __init__(self, id_or_filename, options):
     if id_or_filename.endswith(".zip") or id_or_filename.endswith(".bz2"):
@@ -88,6 +98,12 @@ class FeedbackLog(AbstractLog):
       cookie_processor = urllib2.HTTPCookieProcessor(self.cookies)
       opener = urllib2.build_opener(cookie_processor)
       self._DownloadSystemLog(id_or_filename, opener)
+      self.image = None
+      if options.screenshot:
+        self._DownloadScreenshot(id_or_filename, opener)
+      # Only write to screenshot.jpg if we will be viewing the screenshot
+      if not options.download and self.image:
+        file("screenshot.jpg", "w").write(self.image)
 
     self._ExtractSystemLog()
     self._ExtractLogFiles()
@@ -125,7 +141,7 @@ class FeedbackLog(AbstractLog):
   def _DownloadSystemLog(self, id, opener):
     # First download the report.zip file
     logfile = "report-%s-system_logs.zip" % id
-    url = ("https://feedback.corp.googleusercontent.com/binarydata/"+
+    url = ("https://feedback.corp.googleusercontent.com/binarydata/" +
            "%s?id=%s&logIndex=0") % (logfile, id)
     self.report = opener.open(url).read()
     file("test.zip", "w").write(self.report)
@@ -134,6 +150,14 @@ class FeedbackLog(AbstractLog):
       # not a zip/bzip file. Log in and try again.
       self._Login(opener)
       self.report = opener.open(url).read()
+
+  def _DownloadScreenshot(self, id, opener):
+    url = "https://feedback.corp.googleusercontent.com/screenshot?id=%s" % id
+    self.image = None
+    try:
+      self.image = opener.open(url).read()
+    except urllib2.URLError:
+      print "No screenshots available - %s" % url
 
   def _ExtractSystemLog(self):
     if self.report[0:2] == "BZ":

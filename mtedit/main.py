@@ -30,7 +30,7 @@ def main(argv):
                     help="set target filename for storing results",
                     metavar="output.log")
   parser.add_option("-d", "--download",
-                    action="store_true", dest="download", default=False,
+                    dest="download", action="store_true", default=False,
                     help="download file only, don't edit.")
   parser.add_option("-e", "--evdev",
                     dest="evdev", default=None,
@@ -46,6 +46,9 @@ def main(argv):
   parser.add_option("-s", "--serve",
                     dest="serve", action="store_true", default=False,
                     help="Serve a standalone MTEdit.")
+  parser.add_option("-c", "--screenshot",
+                    dest="screenshot", action="store_true", default=False,
+                    help="Attempt to download screenshot from feedback url.")
   (options, args) = parser.parse_args()
 
   editor = LogEditor(persistent=options.persistent)
@@ -71,6 +74,9 @@ def main(argv):
     else:
       log = editor.Edit(log)
       log.SaveAs(options.out)
+
+  log.CleanUp()
+
 
 if __name__ == "__main__":
   main(sys.argv)
