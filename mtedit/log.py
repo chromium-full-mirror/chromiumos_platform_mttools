@@ -24,6 +24,7 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 # path to the cookies file used for storing the login cookies.
 cookies_file = os.path.join(script_dir, "mtedit.cookies")
 
+log_cache_dir = os.path.join(script_dir, "reports")
 
 def Log(source, options):
   """
@@ -91,13 +92,22 @@ class FeedbackLog(AbstractLog):
     if id_or_filename.endswith(".zip") or id_or_filename.endswith(".bz2"):
       self.report = open(id_or_filename).read()
     else:
-      # setup cookies file and url opener then download the report archive
-      self.cookies = cookielib.MozillaCookieJar(cookies_file)
-      if os.path.exists(cookies_file):
-        self.cookies.load()
-      cookie_processor = urllib2.HTTPCookieProcessor(self.cookies)
-      opener = urllib2.build_opener(cookie_processor)
-      self._DownloadSystemLog(id_or_filename, opener)
+      # See if we've already downloaded this
+      cached_filename = os.path.join(log_cache_dir, id_or_filename + ".zip")
+      try:
+        self.report = open(cached_filename).read()
+      except IOError:
+        # setup cookies file and url opener then download the report archive
+        self.cookies = cookielib.MozillaCookieJar(cookies_file)
+        if os.path.exists(cookies_file):
+          self.cookies.load()
+        cookie_processor = urllib2.HTTPCookieProcessor(self.cookies)
+        opener = urllib2.build_opener(cookie_processor)
+        self._DownloadSystemLog(id_or_filename, opener)
+        # Cache the log on disk
+        if not os.path.exists(log_cache_dir):
+          os.makedirs(log_cache_dir)
+        file(cached_filename, "w").write(self.report)
       self.image = None
       if options.screenshot:
         self._DownloadScreenshot(id_or_filename, opener)
