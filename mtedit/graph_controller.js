@@ -22,7 +22,7 @@ function GraphController(canvas_elt) {
     evt.stopPropagation();
     evt.preventDefault();
     var offset = evt.data[1].offset();
-    evt.data[0].mouseUp(evt.pageX - offset.left, evt.pageY - offset.top);
+    evt.data[0].mouseUp(evt.pageX, evt.pageY, offset.left, offset.top);
     $(document).unbind('mousemove', docMouseMove);
     $(document).unbind('mouseup', docMouseUp);
   }
@@ -33,6 +33,7 @@ function GraphController(canvas_elt) {
     $(document).bind('mouseup', [evt.data[0], evt.data[1]], docMouseUp);
     evt.data[0].mouseDown(evt.offsetX, evt.offsetY);
   });
+  this.selected = null;
   this.mouseX = this.mouseY = 0;
   this.dragging = false;
   this.dragStart = null;
@@ -43,6 +44,7 @@ function GraphController(canvas_elt) {
   var halfHeight = (this.canvas.height / 2) | 0;
   this.defaultYMin = -halfHeight;
   this.defaultYMax = halfHeight;
+  this.highlightSelected = false;
   this.resetCoordinatesAndZoom();
 };
 
@@ -53,6 +55,9 @@ GraphController.prototype = {
   setLineSegments: function(segs) {
     this.segs = segs;
     this.draw();
+  },
+  setHighlightSelected: function(on) {
+    this.highlightSelected = on;
   },
   setDefaultZoom: function(left, top, right, bottom) {
     var viewHeight = bottom - top;
@@ -117,6 +122,11 @@ GraphController.prototype = {
   },
   mouseDown: function(xPos, yPos) {
     this.dragStart = { 'xPos': xPos, 'yPos': yPos };
+    if (this.highlightSelected && this.selected !== null) {
+      this.selected.onDeselected();
+      this.selected = null;
+      this.draw();
+    }
   },
   moveBy: function(dx, dy) {
     this.xMin -= dx;
@@ -138,8 +148,36 @@ GraphController.prototype = {
     this.mouseX = xPos;
     this.mouseY = yPos;
   },
-  mouseUp: function(xPos, yPos) {
+  distSquared: function(item, xPos, yPos) {
+    var point = this.pointToView(item.center);
+    return (point.xPos - xPos) * (point.xPos - xPos) +
+        (point.yPos - yPos) * (point.yPos - yPos);
+  },
+  // evtX, evtY are the absolute page coordinates for the mouseUp event.
+  // offsetX, offsetY are the absolute page coordinates for the canvas element.
+  // Taking their difference we get the relative coordinates for the event in
+  // the canvas (xPos and yPos).
+  mouseUp: function(evtX, evtY, offsetX, offsetY) {
     this.dragStart = null;
+    if (this.highlightSelected) {
+      var xPos = evtX - offsetX, yPos = evtY - offsetY;
+      var index = null, best_distance = Infinity;
+      for (var i = 0; i < this.segs.length; i++) {
+        var item = this.segs[i];
+        if (item.type == GraphController.CIRCLE) {
+          var distSquared = this.distSquared(item, xPos, yPos);
+          if (distSquared <= (5.0 * 5.0) && distSquared < best_distance) {
+            best_distance = distSquared;
+            index = i;
+          }
+        }
+      }
+      if (index !== null) {
+        this.selected = this.segs[index];
+        this.selected.onSelected(evtX, evtY);
+        this.draw();
+      }
+    }
   },
   zoomBy: function(amount) {
     var scaleFactor = Math.pow(2, -amount / 16);
@@ -189,7 +227,12 @@ GraphController.prototype = {
       ctx.fillStyle = item.color;
       ctx.fillText(item.label, pt.xPos, pt.yPos);
     }
-    ctx.stroke();
+    if (this.highlightSelected && item === this.selected) {
+      ctx.fillStyle = 'green';
+      ctx.fill();
+    } else {
+      ctx.stroke();
+    }
   },
   pointToView: function(pt) {
     var arr = [pt.xPos, pt.yPos];

@@ -450,6 +450,7 @@ function touchscreenToggle(on) {
   canvas = document.getElementById('fview');
   canvas.setAttribute('width', canvasWidth);
   canvas.setAttribute('height', canvasHeight);
+  finger_view_controller.setHighlightPopup(on);
   finger_view_controller.resetZooms();
 }
 
@@ -521,13 +522,12 @@ $(document).ready(function() {
       primary: "ui-icon-play"
     }
   });
-  var canvas = document.getElementById('fview');
   var gc = new GraphController($('#gview'));
   gc.setLineSegments([{'start': {'xPos': 0.1, 'yPos': 0.1},
                        'end': {'xPos': 0.9, 'yPos': 0.5}}]);
   var inGc = new GraphController($('#fview'));
-  finger_view_controller = new FingerViewController(inGc, gc, $('#intext'),
-                                                    $('#out-lock-head'));
+  finger_view_controller = new FingerViewController(
+      inGc, gc, $('#intext'), $('#popup'), $('#out-lock-head'));
 
   $("#out-resetzoom").button({
     icons: {
@@ -683,7 +683,8 @@ $(document).ready(function() {
           </div>
           <br/>
           <button class="button" id="in-resetzoom">Reset Zoom</button>
-          <div id="intext">Time: 123123123.123<br/>Finger Cnt: 2<br/>Touch Cnt: 2</div>
+          <div class="pad" id="intext">Time: 123123123.123<br/>Finger Cnt: 2<br/>Touch Cnt: 2</div>
+          <div id="popup">Time: 123123123.123<br/>Finger Cnt: 2<br/>Touch Cnt: 2</div>
         </div>
         <div class="viewspan pad">
           <h3>Output</h3>

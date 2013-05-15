@@ -160,3 +160,11 @@ h2, h3 {
 	margin:auto;
 	height: 150px;
 }
+
+#popup {
+	background: white;
+	border: 1px solid #ccc;
+	display: none;
+	padding: 10px;
+	position: absolute;
+}

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-function FingerViewController(inGraph, outGraph, inText, outLockHead) {
+function FingerViewController(inGraph, outGraph, inText, popup, outLockHead) {
   this.entries = [];
   this.hardwareProperties = [];
   this.begin = -1;
@@ -12,6 +12,7 @@ function FingerViewController(inGraph, outGraph, inText, outLockHead) {
   this.gs_graph = outGraph;
   this.inGraph = inGraph;
   this.inText = inText;
+  this.popup = popup;
   this.outLockHead = outLockHead[0];
 };
 
@@ -196,9 +197,12 @@ FingerViewController.prototype = {
     this.end = end;
     this.redraw();
   },
+  setHighlightPopup: function(on) {
+    this.inGraph.setHighlightSelected(on);
+  },
   getEvent: function(index) {
     if (index < 0 || index >= this.entries.length)
-      return "N/A";
+      return 'N/A';
     return JSON.stringify(this.entries[index], null, 2);
   },
   getSnippet: function(begin, end) {
@@ -300,6 +304,64 @@ FingerViewController.prototype = {
 
     return unittest;
   },
+  getContentForEntry: function(entry, lastEntry) {
+    var dist = 'N/A';
+    var hp = this.hardwareProperties;
+    var xRes = hp.xResolution;
+    var yRes = hp.yResolution;
+    if (entry.fingers.length == 2) {
+      var dx = (entry.fingers[1].positionX -
+                entry.fingers[0].positionX) / xRes;
+      var dy = (entry.fingers[1].positionY -
+                entry.fingers[0].positionY) / yRes;
+      dist = Math.sqrt(dx * dx + dy * dy) + 'mm';
+    }
+    var fingerStrings = [];
+    for (var i = 0; i < entry.fingers.length; i++) {
+      var stringEntry = '' + entry.fingers[i].trackingId;
+      var fingerState = entry.fingers[i];
+      var outPressure = fingerState.pressure *
+          this.log.properties['Pressure Calibration Slope'] +
+          this.log.properties['Pressure Calibration Offset'];
+      var xPos = fingerState.positionX / xRes;
+      var yPos = fingerState.positionY / yRes;
+      stringEntry += ' (' + xPos.toFixed(2) + ', ' + yPos.toFixed(2) + ')';
+      stringEntry += ' pr: ' + outPressure.toFixed(2);
+      if (lastEntry) {
+        var dt = lastEntry.timestamp - entry.timestamp;
+        var angles = [];
+        for (var j = 0; j < lastEntry.fingers.length; j++) {
+          if (lastEntry.fingers[j].trackingId ==
+              entry.fingers[i].trackingId) {
+            var dx = entry.fingers[i].positionX -
+                lastEntry.fingers[j].positionX;
+            var dy = entry.fingers[i].positionY -
+                lastEntry.fingers[j].positionY;
+            dx /= xRes;
+            dy /= yRes;
+            stringEntry += ' (dx/dt: ' + (dx/dt).toFixed(2) + ', dy/dt: ' +
+                (dy/dt).toFixed(2) + ' flags: ' + entry.fingers[i].flags + ')';
+          }
+        }
+      }
+      fingerStrings.push(stringEntry);
+    }
+    var fingerString = ': ' + fingerStrings.join(', ');
+    return 'timestamp: ' + entry.timestamp +
+        '<br/>' + 'fingerCount: ' + entry.fingers.length + fingerString +
+        '<br/>' + 'touchCount: ' + entry.touchCount +
+        '<br/>' + 'button: ' + (entry.buttonsDown ? 'DOWN' : 'UP') +
+        '<br/>' + 'dist: ' + dist;
+  },
+  handleEntrySelected: function(entry, lastEntry, pageX, pageY) {
+    var offsetX = 20;
+    var offsetY = 10;
+    this.popup.show().css('left', pageX + offsetX).css('top', pageY + offsetY)
+        .html(this.getContentForEntry(entry, lastEntry));
+  },
+  handleEntryDeselected: function() {
+    this.popup.hide();
+  },
   updateInput: function() {
     var lastPosDict = {};
     var segs = [];
@@ -349,6 +411,7 @@ FingerViewController.prototype = {
     }
     for (var i = this.begin; i < end; i++) {
       var entry = this.entries[i];
+      var prevEntry = lastEntry;
       if (entry.type != 'hardwareState') {
         continue;
       }
@@ -394,12 +457,20 @@ FingerViewController.prototype = {
         var outPressure = fingerState.pressure *
             this.log.properties['Pressure Calibration Slope'] +
             this.log.properties['Pressure Calibration Offset'];
+        var self = this;
         var circle = {'type': GraphController.CIRCLE,
                       'center': pt,
                       'color': color,
                       'radius': outPressure / 4,
                       'label': fingerState.trackingId + ';' +
-                      outPressure.toFixed(2)};
+                          outPressure.toFixed(2),
+                      'onSelected': function(pageX, pageY) {
+                        self.handleEntrySelected(
+                            entry, prevEntry, pageX, pageY);
+                      },
+                      'onDeselected': function() {
+                        self.handleEntryDeselected();
+                      }};
         segs.push(circle);
         points.push(circle);
       }
@@ -417,49 +488,8 @@ FingerViewController.prototype = {
     }
     this.inGraph.setLineSegments(segs);
     if (lastEntry) {
-      var dist = "N/A";
-      if (lastEntry.fingers.length == 2) {
-        var dx = (lastEntry.fingers[1].positionX -
-                  lastEntry.fingers[0].positionX) / xRes;
-        var dy = (lastEntry.fingers[1].positionY -
-                  lastEntry.fingers[0].positionY) / yRes;
-        dist = Math.sqrt(dx * dx + dy * dy) + "mm";
-      }
-      var fingerStrings = [];
-      for (var i = 0; i < lastEntry.fingers.length; i++) {
-        var stringEntry = "" + lastEntry.fingers[i].trackingId;
-        var fingerState = lastEntry.fingers[i];
-        var outPressure = fingerState.pressure *
-            this.log.properties['Pressure Calibration Slope'] +
-            this.log.properties['Pressure Calibration Offset'];
-        var xPos = fingerState.positionX / xRes;
-        var yPos = fingerState.positionY / yRes;
-        stringEntry += " (" + xPos.toFixed(2) + ", " + yPos.toFixed(2) + ")";
-        stringEntry += " pr: " + outPressure.toFixed(2);
-        if (prevLastEntry) {
-          var dt = prevLastEntry.timestamp - lastEntry.timestamp;
-          var angles = [];
-          for (var j = 0; j < prevLastEntry.fingers.length; j++) {
-            if (prevLastEntry.fingers[j].trackingId ==
-                lastEntry.fingers[i].trackingId) {
-              var dx = lastEntry.fingers[i].positionX -
-                  prevLastEntry.fingers[j].positionX;
-              var dy = lastEntry.fingers[i].positionY -
-                  prevLastEntry.fingers[j].positionY;
-              dx /= xRes;
-              dy /= yRes;
-              stringEntry += " (dx/dt: " + (dx/dt).toFixed(2) + ", dy/dt: " + (dy/dt).toFixed(2) + " flags: " + lastEntry.fingers[i].flags + ")";
-            }
-          }
-        }
-        fingerStrings.push(stringEntry);
-      }
-      var fingerString = ": " + fingerStrings.join(", ");
-      this.inText[0].innerHTML = "timestamp: " + lastEntry.timestamp +
-      "<br/>" + "fingerCount: " + lastEntry.fingers.length + fingerString +
-      "<br/>" + "touchCount: " + lastEntry.touchCount +
-      "<br/>" + "button: " + (lastEntry.buttonsDown ? "DOWN" : "UP") +
-      "<br/>" + "dist: " + dist;
+      this.inText[0].innerHTML = this.getContentForEntry(
+          lastEntry, prevLastEntry);
     }
   },
   updateGs: function() {
@@ -475,6 +505,9 @@ FingerViewController.prototype = {
     var end = Math.min(this.end + 1, this.entries.length);
     for (var i = this.begin; i < end; i++) {
       var entry = this.entries[i];
+      var prevEntry = null;
+      if (i > this.begin)
+        prevEntry = this.entries[i - 1];
       if (entry.type == 'gesture') {
         if (entry.gestureType == 'scroll' || entry.gestureType == 'move' ||
             entry.gestureType == 'fling' || entry.gestureType == 'swipe') {
@@ -547,10 +580,17 @@ FingerViewController.prototype = {
           yMin = Math.min(yMin, yPos);
           yMax = Math.max(yMax, yPos);
         }
+        var self = this;
         segs.push({'type': GraphController.CIRCLE,
                    'center': {'xPos': xPos, 'yPos': yPos},
                    'radius': 3,
-                   'color': '#ccc'});
+                   'color': '#ccc',
+                   'onSelected': function(pageX, pageY) {
+                     self.handleEntrySelected(entry, prevEntry, pageX, pageY);
+                   },
+                   'onDeselected': function() {
+                     self.handleEntryDeselected();
+                   }});
       }
       xMin = Math.min(xMin, xPos);
       xMax = Math.max(xMax, xPos);
