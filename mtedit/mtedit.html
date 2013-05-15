@@ -206,7 +206,7 @@ function loadLog(obj) {
       return;
     }
     // If obj.isTouchScreen is true, then manually switch to touchscreen mode
-    $('#touchscreen-toggle').attr('checked', !!obj.isTouchscreen).trigger('change');
+    touchscreenToggle(!!obj.isTouchscreen);
     json_obj = obj;
     generateRadioButtons(obj);
     current_layer = 0;
@@ -432,12 +432,12 @@ function radioChange(e) {
   }
 }
 
-function touchscreenToggle() {
+function touchscreenToggle(on) {
   var isTouchscreen = false;
   var inputWidth = '';
   var canvasWidth = 480, canvasHeight = 320;
   var canvas;
-  if ($(this).is(':checked')) {
+  if (on) {
     isTouchscreen = true;
     inputWidth = 1100;
     canvasWidth = 1080;
@@ -531,7 +531,6 @@ $(document).ready(function() {
   finger_view_controller = new FingerViewController(inGc, gc, $('#intext'),
                                                     $('#out-lock-head'));
 
-  $("#touchscreen-toggle").change(touchscreenToggle);
   $("#out-resetzoom").button({
     icons: {
       primary: "ui-icon-arrow-4-diag"
@@ -676,7 +675,6 @@ $(document).ready(function() {
   </head>
   <body>
     <div id="container">
-      <input type="checkbox" id="touchscreen-toggle">Touchscreen</input>
       <div id="viewer">
         <h2 class="pad">Touchpad Activity Viewer</h2>
         <h2 class="screen">Touchscreen Viewer</h2>

@@ -182,45 +182,87 @@ class FeedbackLog(AbstractLog):
       sys.exit(-1)
 
   def _ExtractLogFiles(self):
-    # find embedded and uuencoded activity.tar in system log
-    log_start1 = ("hack-33025-touchpad_activity=\"\"\"\n" +
-                 "begin-base64 644 touchpad_activity_log.tar\n")
-    log_start2 = ("touchpad_activity=\"\"\"\n" +
-                 "begin-base64 644 touchpad_activity_log.tar\n")
-    log_start3 = ("hack-33025-touchpad_activity=<multiline>\n" +
-                 "---------- START ----------\n" +
-                 "begin-base64 644 touchpad_activity_log.tar\n")
-    if log_start1 in self.system:
-      log_start_index = self.system.index(log_start1) + len(log_start1)
-      log_end_index = self.system.index("\"\"\"", log_start_index)
-    elif log_start2 in self.system:
-      log_start_index = self.system.index(log_start2) + len(log_start2)
-      log_end_index = self.system.index("\"\"\"", log_start_index)
-    elif log_start3 in self.system:
-      log_start_index = self.system.index(log_start3) + len(log_start3)
-      log_end_index = self.system.index("---------- END ----------",
-                                        log_start_index)
-    else:
-      print "cannot find touchpad_activity_log.tar in systems log file"
+    # Find embedded and uuencoded activity.tar in system log
+
+    def ExtractByInterface(interface):
+      assert interface == 'pad' or interface == 'screen'
+
+      log_index = [
+        (("hack-33025-touch{0}_activity=\"\"\"\n" +
+          "begin-base64 644 touch{0}_activity_log.tar\n").format(interface),
+         '"""'),
+        (("touch{0}_activity=\"\"\"\n" +
+          "begin-base64 644 touch{0}_activity_log.tar\n").format(interface),
+         '"""'),
+        (("hack-33025-touch{0}_activity=<multiline>\n" +
+          "---------- START ----------\n" +
+          "begin-base64 644 touch{0}_activity_log.tar\n").format(interface),
+         "---------- END ----------"),
+      ]
+
+      start_index = end_index = None
+      for start, end in log_index:
+        if start in self.system:
+          start_index = self.system.index(start) + len(start)
+          end_index = self.system.index(end, start_index)
+          break
+
+      if start_index is None:
+        return []
+
+      activity_tar_enc = self.system[start_index:end_index]
+
+      # base64 decode
+      activity_tar_data = base64.b64decode(activity_tar_enc)
+
+      # untar
+      activity_tar_file = tarfile.open(fileobj=StringIO(activity_tar_data))
+
+      def ExtractPadFiles(name):
+        # find matching evdev file
+        evdev_name = name[0:name.index('touchpad_activity')]
+        evdev_name = evdev_name + "cmt_input_events"
+
+        for file_name in activity_tar_file.getnames():
+          if file_name.startswith(evdev_name):
+            evdev_name = file_name
+            break
+
+        activity_gz = activity_tar_file.extractfile(name)
+        evdev_gz = activity_tar_file.extractfile(evdev_name)
+
+        # decompress log files
+        return (GzipFile(fileobj=activity_gz).read(),
+            GzipFile(fileobj=evdev_gz).read())
+
+      def ExtractScreenFiles(name):
+        evdev = activity_tar_file.extractfile(name)
+        return (evdev.read(), None)
+
+      extract_func = {
+        'pad': ExtractPadFiles,
+        'screen': ExtractScreenFiles,
+      }
+
+      # return latest log files, we don't include cmt files
+      return [(filename, extract_func[interface])
+          for filename in activity_tar_file.getnames()
+              if filename.find('cmt') == -1]
+
+    logs = ExtractByInterface('pad') + ExtractByInterface('screen')
+    if not logs:
+      print ("Cannot find touchpad_activity_log.tar or " +
+          "touchscreen_activity_log.tar in systems log file.")
       sys.exit(-1)
 
-    activity_tar_enc = self.system[log_start_index:log_end_index]
-
-    # base64 decode
-    activity_tar_data = base64.b64decode(activity_tar_enc)
-
-    # untar
-    activity_tar_file = tarfile.open(fileobj=StringIO(activity_tar_data))
-
-    # find latest log files
-    logs = filter(lambda n: n.find("touchpad_activity") >= 0,
-                  activity_tar_file.getnames())
     if len(logs) == 1:
       idx = 0
     else:
       while True:
         print "Which log file would you like to use?"
-        for i, name in enumerate(logs):
+        for i, (name, extract_func) in enumerate(logs):
+          if name.startswith('evdev'):
+            name = 'touchscreen log - ' + name
           print i, name
         print ">"
         selection = sys.stdin.readline()
@@ -233,23 +275,8 @@ class FeedbackLog(AbstractLog):
         except:
           print "Not a number"
 
-    activity_name = logs[idx]
-
-    # find matching evdev file
-    evdev_name = logs[idx][0:logs[idx].index("touchpad_activity")]
-    evdev_name = evdev_name + "cmt_input_events"
-
-    for name in activity_tar_file.getnames():
-      if name.startswith(evdev_name):
-        evdev_name = name
-        break
-
-    activity_gz = activity_tar_file.extractfile(activity_name)
-    evdev_gz = activity_tar_file.extractfile(evdev_name)
-
-    # decompress log files
-    self.activity = GzipFile(fileobj=activity_gz).read()
-    self.evdev = GzipFile(fileobj=evdev_gz).read()
+    name, extract_func = logs[idx]
+    self.activity, self.evdev = extract_func(name)
 
 
 identity_message = """\
