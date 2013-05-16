@@ -89,6 +89,7 @@ class FeedbackLog(AbstractLog):
     Downloads logs and (possibly) screenshot from a feedback id or file name
   """
   def __init__(self, id_or_filename, options):
+    self.image = None
     if id_or_filename.endswith(".zip") or id_or_filename.endswith(".bz2"):
       self.report = open(id_or_filename).read()
     else:
@@ -108,9 +109,8 @@ class FeedbackLog(AbstractLog):
         if not os.path.exists(log_cache_dir):
           os.makedirs(log_cache_dir)
         file(cached_filename, "w").write(self.report)
-      self.image = None
-      if options.screenshot:
-        self._DownloadScreenshot(id_or_filename, opener)
+        if options.screenshot:
+          self._DownloadScreenshot(id_or_filename, opener)
       # Only write to screenshot.jpg if we will be viewing the screenshot
       if not options.download and self.image:
         file("screenshot.jpg", "w").write(self.image)

@@ -133,12 +133,10 @@ function convertEventStreamToEntries(data) {
       var val = lines[i].split(' ');
       switch (val[2]) {
         case '0':
-          obj.hardwareProperties.left = parseInt(val[3]);
           obj.hardwareProperties.right = parseInt(val[4]) + 1;
           obj.hardwareProperties.xResolution = parseInt(val[7]);
           break;
         case '1':
-          obj.hardwareProperties.top = parseInt(val[3]);
           obj.hardwareProperties.bottom = parseInt(val[4]) + 1;
           obj.hardwareProperties.yResolution = parseInt(val[7]);
           break;
