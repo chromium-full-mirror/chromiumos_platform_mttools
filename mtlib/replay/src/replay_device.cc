@@ -168,6 +168,12 @@ void ReplayDevice::GestureCallback(const struct Gesture* gesture) {
     case kGestureTypeSwipeLift:
       fprintf(fp, "Swipe Lift");
       break;
+    case kGestureTypeMetrics:
+      fprintf(fp, "Metrics type=%d (%f, %f)",
+              gesture->details.metrics.type,
+              gesture->details.metrics.data[0],
+              gesture->details.metrics.data[1]);
+      break;
     }
     fprintf(fp, "\n%s", separator);
   }
