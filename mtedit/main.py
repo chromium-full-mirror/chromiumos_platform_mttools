@@ -48,7 +48,7 @@ def main(argv):
                     help="Serve a standalone MTEdit.")
   parser.add_option("-c", "--screenshot",
                     dest="screenshot", action="store_true", default=False,
-                    help="Attempt to download screenshot from feedback url.")
+                    help="Force an attempt to find and download a screenshot.")
   (options, args) = parser.parse_args()
 
   editor = LogEditor(persistent=options.persistent)

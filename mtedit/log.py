@@ -8,6 +8,7 @@ import base64
 import bz2
 import cookielib
 import getpass
+import imghdr
 import os
 import os.path
 import re
@@ -90,33 +91,52 @@ class FeedbackLog(AbstractLog):
   """
   def __init__(self, id_or_filename, options):
     self.image = None
+    self.try_screenshot = options.screenshot
+
     if id_or_filename.endswith(".zip") or id_or_filename.endswith(".bz2"):
       self.report = open(id_or_filename).read()
-    else:
-      # See if we've already downloaded this
-      cached_filename = os.path.join(log_cache_dir, id_or_filename + ".zip")
+      screenshot_filename = id_or_filename[:-4] + '.jpg'
       try:
-        self.report = open(cached_filename).read()
+        self.image = open(screenshot_filename).read()
       except IOError:
-        # setup cookies file and url opener then download the report archive
-        self.cookies = cookielib.MozillaCookieJar(cookies_file)
-        if os.path.exists(cookies_file):
-          self.cookies.load()
-        cookie_processor = urllib2.HTTPCookieProcessor(self.cookies)
-        opener = urllib2.build_opener(cookie_processor)
-        self._DownloadSystemLog(id_or_filename, opener)
-        # Cache the log on disk
-        if not os.path.exists(log_cache_dir):
-          os.makedirs(log_cache_dir)
-        file(cached_filename, "w").write(self.report)
-        if options.screenshot:
-          self._DownloadScreenshot(id_or_filename, opener)
-      # Only write to screenshot.jpg if we will be viewing the screenshot
-      if not options.download and self.image:
-        file("screenshot.jpg", "w").write(self.image)
+        # No corresponding screenshot available.
+        pass
+    else:
+      def GetAndUpdateCachedFile(cached_filename, downloader):
+        try:
+          return open(cached_filename).read()
+        except IOError:
+          data = downloader(id_or_filename, self._GetOpener())
+          # Cache the data on disk
+          if not os.path.exists(log_cache_dir):
+            os.makedirs(log_cache_dir)
+          file(cached_filename, "w").write(data)
+          return data
+      self.report = GetAndUpdateCachedFile(
+          os.path.join(log_cache_dir, id_or_filename + ".zip"),
+          self._DownloadSystemLog)
+      self._ExtractSystemLog()
+      self._ExtractLogFiles()
+      if self.try_screenshot:
+        self.image = GetAndUpdateCachedFile(
+            os.path.join(log_cache_dir, id_or_filename + ".jpg"),
+            self._DownloadScreenshot)
 
-    self._ExtractSystemLog()
-    self._ExtractLogFiles()
+    # Only write to screenshot.jpg if we will be viewing the screenshot
+    if not options.download and self.image:
+      file("screenshot.jpg", "w").write(self.image)
+
+  def _GetOpener(self):
+    try:
+      return self.opener
+    except AttributeError:
+      # setup cookies file and url opener
+      self.cookies = cookielib.MozillaCookieJar(cookies_file)
+      if os.path.exists(cookies_file):
+        self.cookies.load()
+      cookie_processor = urllib2.HTTPCookieProcessor(self.cookies)
+      self.opener = urllib2.build_opener(cookie_processor)
+      return self.opener
 
   def _Login(self, opener):
     print "Login to corp.google.com:"
@@ -153,21 +173,27 @@ class FeedbackLog(AbstractLog):
     logfile = "report-%s-system_logs.zip" % id
     url = ("https://feedback.corp.googleusercontent.com/binarydata/" +
            "%s?id=%s&logIndex=0") % (logfile, id)
-    self.report = opener.open(url).read()
-    file("test.zip", "w").write(self.report)
+    report = opener.open(url).read()
+    file("test.zip", "w").write(report)
 
-    if self.report[0:2] != "BZ" and self.report[0:2] != "PK":
+    if report[0:2] != "BZ" and report[0:2] != "PK":
       # not a zip/bzip file. Log in and try again.
       self._Login(opener)
-      self.report = opener.open(url).read()
+      report = opener.open(url).read()
+    return report
 
   def _DownloadScreenshot(self, id, opener):
     url = "https://feedback.corp.googleusercontent.com/screenshot?id=%s" % id
-    self.image = None
+    image = ""
     try:
-      self.image = opener.open(url).read()
+      image = opener.open(url).read()
+      if imghdr.what("", image) != 'jpeg':
+        # We aren't authenticated; log in and try again.
+        self._Login(opener)
+        image = opener.open(url).read()
     except urllib2.URLError:
       print "No screenshots available - %s" % url
+    return image
 
   def _ExtractSystemLog(self):
     if self.report[0:2] == "BZ":
@@ -236,6 +262,9 @@ class FeedbackLog(AbstractLog):
             GzipFile(fileobj=evdev_gz).read())
 
       def ExtractScreenFiles(name):
+        # Always try for a screenshot with touchscreen view
+        self.try_screenshot = True
+
         evdev = activity_tar_file.extractfile(name)
         return (evdev.read(), None)
 
