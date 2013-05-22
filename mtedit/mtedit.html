@@ -194,6 +194,94 @@ function convertEventStreamToEntries(data) {
   return obj;
 }
 
+function convertEntriesToEventStream(obj) {
+  var lines = [];
+  // Hardware properties
+  var meta = '# absinfo:';
+  var hardwareProperties = obj.hardwareProperties;
+  lines.push(meta + ' 0 0 ' + (hardwareProperties.right - 1) + ' 0 0 ' +
+      hardwareProperties.xResolution);
+  lines.push(meta + ' 1 0 ' + (hardwareProperties.bottom - 1) + ' 0 0 ' +
+      hardwareProperties.yResolution);
+  lines.push(meta + ' 47 0 ');  // Actual max slot will be filled in later
+  var maxSlotIndex = lines.length - 1;
+  // Events
+  var evt = 'E:';
+  var syn = '0000';  // EV_SYN
+  var abs = '0003';  // EV_ABS
+  var eventCodes = {
+    'slot': '002f',
+    'touchMajor': '0030',
+    'positionX': '0035',
+    'positionY': '0036',
+    'trackingId': '0039',
+    'pressure': '003a',
+  };
+  var checkEvents = ['positionX', 'positionY', 'pressure', 'touchMajor'];
+  var slotMap = {};
+  var clearSlots = {};
+  var freeSlots = [0];
+  var maxSlot = 0;
+  for (var i = 0; i < obj.entries.length; i++) {
+    var entry = obj.entries[i];
+    // Zero clearSlots to mark which trackingIds are still valid
+    for (var trackingId in clearSlots) {
+      if (clearSlots.hasOwnProperty(trackingId)) {
+        clearSlots[trackingId] = true;
+      }
+    }
+    if (entry.fingers !== undefined) {
+      for (var j = 0; j < entry.fingers.length; j++) {
+        var finger = entry.fingers[j];
+        var trackingId = finger.trackingId;
+        // If we have not already assigned a slot to this trackingId,
+        // find/create one for it
+        if (slotMap[trackingId] === undefined) {
+          if (freeSlots.length === 0) {
+            maxSlot += 1;
+            freeSlots.push(maxSlot);
+          }
+          slotMap[trackingId] = freeSlots.pop();
+        }
+        var slot = slotMap[trackingId];
+        // This trackingId is still valid, do not clear
+        clearSlots[trackingId] = false;
+        lines.push(evt + ' 0 ' + abs + ' '  + eventCodes.slot + ' ' + slot);
+        lines.push(evt + ' 0 ' + abs + ' '  + eventCodes.trackingId + ' ' +
+            trackingId);
+        // Add all the other properties of the finger, other than trackingId
+        // and the slot
+        for (var k = 0; k < checkEvents.length; k++) {
+          var key = checkEvents[k];
+          if (key in finger) {
+            lines.push(evt + ' 0 ' + abs + ' ' + eventCodes[key] + ' ' +
+                finger[key]);
+          }
+        }
+      }
+    }
+    for (var trackingId in clearSlots) {
+      if (clearSlots.hasOwnProperty(trackingId)) {
+        if (clearSlots[trackingId]) {
+          // We are done with this particular trackingId, free that slot
+          lines.push(evt + ' 0 ' + abs + ' ' + eventCodes.slot + ' ' +
+              slotMap[trackingId]);
+          lines.push(evt + ' 0 ' + abs + ' ' + eventCodes.trackingId + ' -1 ');
+          freeSlots.push(slotMap[trackingId]);
+          delete clearSlots[trackingId];
+          delete slotMap[trackingId];
+        }
+      }
+    }
+    if (entry.timestamp !== undefined) {
+      lines.push(evt + ' ' + entry.timestamp + ' ' + syn);
+    }
+  }
+  // Fill in the maximum index slot we needed to use
+  lines[maxSlotIndex] += maxSlot
+  return lines.join('\n');
+}
+
 /**
  * Loads the log frames from json.
  * @param {Object} obj Event structure expected by loadLogObj.
@@ -379,7 +467,6 @@ function expandAllFTS() {
   $('#slider').slider('option', 'values', values);
 }
 
-
 function shrink() {
   var values = $('#slider').slider('option', 'values');
   var snippet = finger_view_controller.getSnippet(values[0], values[1]);
@@ -391,6 +478,12 @@ function shrink() {
       alert('Saved');
     });
   }
+}
+
+function exportRange() {
+  var values = $("#slider").slider("option", "values");
+  var snippet = finger_view_controller.getSnippet(values[0], values[1]);
+  $('#text_box').val(convertEntriesToEventStream(snippet));
 }
 
 function generateRadioButtons(obj) {
@@ -575,7 +668,10 @@ $(document).ready(function() {
   $('#shrink').button({
     text: true,
   }).click(shrink);
-  $('#prev_finger_touch').button({
+  $("#export").button({
+    text: true,
+  }).click(exportRange);
+  $("#prev_finger_touch").button({
     text: true,
   }).click(gotoPrevFTS);
   $('#next_finger_touch').button({
@@ -736,6 +832,7 @@ $(document).ready(function() {
         <h2>Load/Save Activity Log</h2>
         <div id="textdiv">
           <h3>From Text File</h3>
+          <button id="export">Export Selected Time Range</button>
           <textarea id="text_box">Drag and drop a touchpad/touchscreen log file here.</textarea></div>
         <div id="feedbackupload">
           <h3>From Feedback Report</h3>
