@@ -435,22 +435,24 @@ function touchscreenToggle(on) {
   var inputWidth = '';
   var canvasWidth = 480, canvasHeight = 320;
   var canvas;
+  var image = null;
   if (on) {
     isTouchscreen = true;
     inputWidth = 1100;
     canvasWidth = 1080;
     canvasHeight = 720;
+    image = $("#screenshot")[0];
   }
   $('.pad').toggle(!isTouchscreen);
   $('.screen').toggle(isTouchscreen);
   $('#inputview').width(inputWidth);
-  $('#fcanvas').toggleClass('screenshot', isTouchscreen);
   $('.view-container').width(canvasWidth);
   $('.view-container').height(canvasHeight);
   canvas = document.getElementById('fview');
   canvas.setAttribute('width', canvasWidth);
   canvas.setAttribute('height', canvasHeight);
   finger_view_controller.setHighlightPopup(on);
+  finger_view_controller.setBackground(image);
   finger_view_controller.resetZooms();
 }
 
@@ -673,12 +675,13 @@ $(document).ready(function() {
   </head>
   <body>
     <div id="container">
+      <img style="display:none" id="screenshot" alt="" src="screenshot.jpg" />
       <div id="viewer">
         <h2 class="pad">Touchpad Activity Viewer</h2>
         <h2 class="screen">Touchscreen Viewer</h2>
         <div class="viewspan" id="inputview">
           <h3 class="pad">Input</h3>
-          <div class="view-container screenshot" id="fcanvas">
+          <div class="view-container">
             <canvas class="view" id="fview" width="480" height="320"></canvas>
           </div>
           <br/>

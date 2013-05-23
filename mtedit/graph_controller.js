@@ -50,6 +50,7 @@ function GraphController(canvas_elt) {
 
 GraphController.LINE = 1;
 GraphController.CIRCLE = 2;
+GraphController.IMAGE = 3;
 
 GraphController.prototype = {
   setLineSegments: function(segs) {
@@ -205,6 +206,8 @@ GraphController.prototype = {
         this.drawLineSegment(ctx, item);
       } else if (item.type == GraphController.CIRCLE) {
         this.drawCircle(ctx, item);
+      } else if (item.type == GraphController.IMAGE) {
+        this.drawImage(ctx, item);
       }
     }
   },
@@ -233,6 +236,13 @@ GraphController.prototype = {
     } else {
       ctx.stroke();
     }
+  },
+  drawImage: function(ctx, item) {
+    var start = this.pointToView(item.start);
+    var end = this.pointToView(item.end);
+    var width = end.xPos - start.xPos;
+    var height = end.yPos - start.yPos;
+    ctx.drawImage(item.image, start.xPos, start.yPos, width, height);
   },
   pointToView: function(pt) {
     var arr = [pt.xPos, pt.yPos];

@@ -14,6 +14,7 @@ function FingerViewController(inGraph, outGraph, inText, popup, outLockHead) {
   this.inText = inText;
   this.popup = popup;
   this.outLockHead = outLockHead[0];
+  this.background = null;
 };
 
 FingerViewController.prototype = {
@@ -199,6 +200,9 @@ FingerViewController.prototype = {
   },
   setHighlightPopup: function(on) {
     this.inGraph.setHighlightSelected(on);
+  },
+  setBackground: function(image) {
+    this.background = image;
   },
   getEvent: function(index) {
     if (index < 0 || index >= this.entries.length)
@@ -395,6 +399,12 @@ FingerViewController.prototype = {
               'end': upLeft,
               'type': GraphController.LINE,
               'color': '#ccc'});
+    if (this.background) {
+      segs.push({'start': upLeft,
+                 'end': botRight,
+                 'type': GraphController.IMAGE,
+                 'image': this.background});
+    }
     var lastEntry = null;
     var prevLastEntry = null;
 
