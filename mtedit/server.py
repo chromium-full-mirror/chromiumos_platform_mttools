@@ -36,11 +36,16 @@ class MTEditHTTPRequestHandler(SimpleHTTPRequestHandler):
     /edit
   """
   def respond(self, data, type='text/html'):
-      # send text response to browser
-      self.send_response(200)
-      self.send_header('Content-type', type)
-      self.end_headers()
-      self.wfile.write(data)
+    # send text response to browser
+    self.send_response(200)
+    self.send_header('Content-type', type)
+    self.end_headers()
+    self.wfile.write(data)
+
+  def end_headers(self):
+    # Override end_headers for additional header to be sent with every response
+    self.send_header('Cache-Control', 'max-age=0, must-revalidate')
+    SimpleHTTPRequestHandler.end_headers(self)
 
   def do_GET(self):
     data = self.server.user_data
