@@ -29,16 +29,16 @@ var logname = undefined;
 function update_range(event, ui) {
   finger_view_controller.setRange(ui.values[0], ui.values[1]);
   var begin_event = finger_view_controller.getEvent(ui.values[0]);
-  $("#begin_event").val(begin_event);
+  $('#begin_event').val(begin_event);
   if ((beginTimestamp = finger_view_controller.getTimestamp(ui.values[0])) > 0)
     $('#input_begin_time').val(beginTimestamp);
   var end_event = finger_view_controller.getEvent(ui.values[1]);
-  $("#end_event").val(end_event);
+  $('#end_event').val(end_event);
   endTimestamp = finger_view_controller.getPreviousHardwareStateTimestamp(
       ui.values[1]);
   if (endTimestamp > 0)
     $('#input_end_time').val(endTimestamp);
-  var values = $("#slider").slider("option", "values");
+  var values = $('#slider').slider('option', 'values');
   $('#num_fts').text('Finger Touch Section (' +
                      finger_view_controller.getFTSIndex(values[1]) + ' / ' +
                      '0 ~ ' + (finger_view_controller.getNumFTS() - 1) + '): ');
@@ -46,7 +46,7 @@ function update_range(event, ui) {
 
 function loadLogObj(obj, isNew) {
   if (!isNew) {
-    var values = $("#slider").slider("option", "values");
+    var values = $('#slider').slider('option', 'values');
     var beginTime = finger_view_controller.getGETimestamp(values[0]);
     var endTime = finger_view_controller.getLETimestamp(values[1]);
   }
@@ -61,7 +61,7 @@ function loadLogObj(obj, isNew) {
     values[0] = finger_view_controller.getHardwareStateGETimestamp(beginTime);
     values[1] = finger_view_controller.getHardwareStateLETimestamp(endTime);
   }
-  $("#slider").slider({
+  $('#slider').slider({
     min: min,
     max: max,
     values: values,
@@ -90,23 +90,23 @@ function convertEventStreamToEntries(data) {
 
   // Default hardware properties.
   var obj = {
-    "entries": [],
-    "hardwareProperties": {
-      "bottom": 1000.0,
-      "left": 0.0,
-      "right": 2000.0,
-      "top": 0.0,
-      "xResolution": 1.0,
-      "yResolution": 1.0},
-    "properties": {
-      "Pressure Calibration Offset": 0.0,
-      "Pressure Calibration Slope": 1.0,
+    'entries': [],
+    'hardwareProperties': {
+      'bottom': 1000.0,
+      'left': 0.0,
+      'right': 2000.0,
+      'top': 0.0,
+      'xResolution': 1.0,
+      'yResolution': 1.0},
+    'properties': {
+      'Pressure Calibration Offset': 0.0,
+      'Pressure Calibration Slope': 1.0,
   }};
   var evt = {
-    "fingers": [],
-    "timestamp": 0,
-    "touchCount": 0,
-    "type": "hardwareState",
+    'fingers': [],
+    'timestamp': 0,
+    'touchCount': 0,
+    'type': 'hardwareState',
   };
   var eventCodes = {
     '002f': 'slot',
@@ -279,51 +279,51 @@ function setup() {
 }());
 
 function begin_stepBack() {
-  var values = $("#slider").slider("option", "values");
-  var minValue = $("#slider").slider("option", "min");
+  var values = $('#slider').slider('option', 'values');
+  var minValue = $('#slider').slider('option', 'min');
   if (values[0] > minValue) {
     var newValue = finger_view_controller.prevHardwareState(values[0]);
     if (newValue < 0)
       return;
     values[0] = newValue;
-    $("#slider").slider("option", "values", values);
+    $('#slider').slider('option', 'values', values);
     $('#input_begin_time').val(finger_view_controller.getTimestamp(newValue));
   }
 }
 
 function begin_stepForward() {
-  var values = $("#slider").slider("option", "values");
+  var values = $('#slider').slider('option', 'values');
   if (values[0] < values[1]) {
     var newValue = finger_view_controller.nextHardwareState(values[0]);
     if (newValue < 0)
       return;
     values[0] = newValue;
-    $("#slider").slider("option", "values", values);
+    $('#slider').slider('option', 'values', values);
     $('#input_begin_time').val(finger_view_controller.getTimestamp(newValue));
   }
 }
 
 function end_stepBack() {
-  var values = $("#slider").slider("option", "values");
+  var values = $('#slider').slider('option', 'values');
   if (values[1] > values[0]) {
     var newValue = finger_view_controller.prevHardwareState(values[1]);
     if (newValue < 0)
       return;
     values[1] = newValue;
-    $("#slider").slider("option", "values", values);
+    $('#slider').slider('option', 'values', values);
     $('#input_end_time').val(finger_view_controller.getTimestamp(newValue));
   }
 }
 
 function end_stepForward() {
-  var values = $("#slider").slider("option", "values");
-  var maxValue = $("#slider").slider("option", "max");
+  var values = $('#slider').slider('option', 'values');
+  var maxValue = $('#slider').slider('option', 'max');
   if (values[1] < maxValue) {
     var newValue = finger_view_controller.nextHardwareState(values[1]);
     if (newValue < 0)
       return;
     values[1] = newValue;
-    $("#slider").slider("option", "values", values);
+    $('#slider').slider('option', 'values', values);
     $('#input_end_time').val(finger_view_controller.getTimestamp(newValue));
   }
 }
@@ -381,35 +381,35 @@ function expandAllFTS() {
 
 
 function shrink() {
-  var values = $("#slider").slider("option", "values");
+  var values = $('#slider').slider('option', 'values');
   var snippet = finger_view_controller.getSnippet(values[0], values[1]);
   $('#text_box').val(JSON.stringify(snippet, null, 2));
   loadLogObj(snippet, true);
 
   if (use_server) {
     $.post('/save/' + logname, JSON.stringify(snippet, null, 2), function () {
-      alert("Saved");
+      alert('Saved');
     });
   }
 }
 
 function generateRadioButtons(obj) {
-  var radioHTML = '<input type="radio" name="viewLayer" value="0" ' +
-                  'checked="checked" onclick="radioChange(event)">' +
+  var radioHTML = '<input type='radio' name='viewLayer' value='0' ' +
+                  'checked='checked' onclick='radioChange(event)'>' +
                   obj.interpreterName + '</input><br/>';
   var layer = 0;
   while (obj.hasOwnProperty('nextLayer')) {
     obj = obj.nextLayer;
     layer++;
-    radioHTML += '<input type="radio" name="viewLayer" value="' + layer +
-                 '" onclick="radioChange(event)">' + obj.interpreterName +
+    radioHTML += '<input type='radio' name='viewLayer' value='' + layer +
+                 '' onclick='radioChange(event)'>' + obj.interpreterName +
                  '</input><br/>';
   }
   document.getElementById('button_div').innerHTML = radioHTML;
   if (layer > 1) {
-    $("#button_div").css("visibility", "visible");
+    $('#button_div').css('visibility', 'visible');
   } else {
-    $("#button_div").css("visibility", "hidden");
+    $('#button_div').css('visibility', 'hidden');
   }
 }
 
@@ -518,10 +518,10 @@ function extractActivityLog(tar) {
 
 $(document).ready(function() {
   setup();
-  $("#playpause").button({
+  $('#playpause').button({
     text: false,
     icons: {
-      primary: "ui-icon-play"
+      primary: 'ui-icon-play'
     }
   });
   var gc = new GraphController($('#gview'));
@@ -531,66 +531,66 @@ $(document).ready(function() {
   finger_view_controller = new FingerViewController(
       inGc, gc, $('#intext'), $('#popup'), $('#out-lock-head'));
 
-  $("#out-resetzoom").button({
+  $('#out-resetzoom').button({
     icons: {
-      primary: "ui-icon-arrow-4-diag"
+      primary: 'ui-icon-arrow-4-diag'
     }
   }).click(function() {
     gc.animResetZoom();
   });
 
-  $("#in-resetzoom").button({
+  $('#in-resetzoom').button({
     icons: {
-      primary: "ui-icon-arrow-4-diag"
+      primary: 'ui-icon-arrow-4-diag'
     }
   }).click(function() {
     inGc.animResetZoom();
-  });
+  };
 
-  $("#begin_stepback").button({
+  $('#begin_stepback').button({
     text: false,
     icons: {
-      primary: "ui-icon-triangle-1-w"
+      primary: 'ui-icon-triangle-1-w'
     }
   }).click(begin_stepBack);
-  $("#begin_stepforward").button({
+  $('#begin_stepforward').button({
     text: false,
     icons: {
-      primary: "ui-icon-triangle-1-e"
+      primary: 'ui-icon-triangle-1-e'
     }
   }).click(begin_stepForward);
-  $("#end_stepback").button({
+  $('#end_stepback').button({
     text: false,
     icons: {
-      primary: "ui-icon-triangle-1-w"
+      primary: 'ui-icon-triangle-1-w'
     }
   }).click(end_stepBack);
-  $("#end_stepforward").button({
+  $('#end_stepforward').button({
     text: false,
     icons: {
-      primary: "ui-icon-triangle-1-e"
+      primary: 'ui-icon-triangle-1-e'
     }
   }).click(end_stepForward);
 
-  $("#shrink").button({
+  $('#shrink').button({
     text: true,
   }).click(shrink);
-  $("#prev_finger_touch").button({
+  $('#prev_finger_touch').button({
     text: true,
   }).click(gotoPrevFTS);
-  $("#next_finger_touch").button({
+  $('#next_finger_touch').button({
     text: true,
   }).click(gotoNextFTS);
-  $("#first_finger_touch").button({
+  $('#first_finger_touch').button({
     text: true,
   }).click(gotoFirstFTS);
-  $("#last_finger_touch").button({
+  $('#last_finger_touch').button({
     text: true,
   }).click(gotoLastFTS);
-  $("#all_finger_touch").button({
+  $('#all_finger_touch').button({
     text: true,
   }).click(expandAllFTS);
-  $("#unittest").button({
+  $('#unittest').button({
     text: true,
   }).click(generateUnittest);
 
