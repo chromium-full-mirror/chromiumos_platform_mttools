@@ -534,7 +534,7 @@ function touchscreenToggle(on) {
     inputWidth = 1100;
     canvasWidth = 1080;
     canvasHeight = 720;
-    image = $("#screenshot")[0];
+    image = document.getElementById('screenshot');
   }
   $('.pad').toggle(!isTouchscreen);
   $('.screen').toggle(isTouchscreen);

@@ -399,7 +399,7 @@ FingerViewController.prototype = {
               'end': upLeft,
               'type': GraphController.LINE,
               'color': '#ccc'});
-    if (this.background) {
+    if (this.background && this.background.width !== 0) {
       segs.push({'start': upLeft,
                  'end': botRight,
                  'type': GraphController.IMAGE,
