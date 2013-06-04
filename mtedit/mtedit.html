@@ -487,15 +487,15 @@ function exportRange() {
 }
 
 function generateRadioButtons(obj) {
-  var radioHTML = '<input type='radio' name='viewLayer' value='0' ' +
-                  'checked='checked' onclick='radioChange(event)'>' +
+  var radioHTML = '<input type="radio" name="viewLayer" value="0" ' +
+                  'checked="checked" onclick="radioChange(event)">' +
                   obj.interpreterName + '</input><br/>';
   var layer = 0;
   while (obj.hasOwnProperty('nextLayer')) {
     obj = obj.nextLayer;
     layer++;
-    radioHTML += '<input type='radio' name='viewLayer' value='' + layer +
-                 '' onclick='radioChange(event)'>' + obj.interpreterName +
+    radioHTML += '<input type="radio" name="viewLayer" value="' + layer +
+                 '" onclick="radioChange(event)">' + obj.interpreterName +
                  '</input><br/>';
   }
   document.getElementById('button_div').innerHTML = radioHTML;
@@ -638,7 +638,7 @@ $(document).ready(function() {
     }
   }).click(function() {
     inGc.animResetZoom();
-  };
+  });
 
   $('#begin_stepback').button({
     text: false,
