@@ -4,11 +4,13 @@
     <meta http-equiv="Content-type" content="text/html; charset=utf-8">
     <title>Multi-Touch Log Viewer</title>
     <link type="text/css" href="css/smoothness/jquery-ui-1.8.16.custom.css" rel="stylesheet" />
+    <script src="js/base64-binary.js"></script>
+    <script src="js/bzip2.js"></script>
     <script src="js/jquery-1.6.4.min.js"></script>
     <script src="js/jquery.mousewheel.js"></script>
     <script src="js/jquery-ui-1.8.16.custom.min.js"></script>
-    <script src="js/bzip2.js"></script>
-    <script src="js/base64-binary.js"></script>
+    <script src="js/js-inflate.js"></script>
+    <script src="js/js-unzip.js"></script>
     <script src="js/jsxcompressor.js"></script>
     <script src="js/purl.js"></script>
 
@@ -481,7 +483,7 @@ function shrink() {
 }
 
 function exportRange() {
-  var values = $("#slider").slider("option", "values");
+  var values = $('#slider').slider('option', 'values');
   var snippet = finger_view_controller.getSnippet(values[0], values[1]);
   $('#text_box').val(convertEntriesToEventStream(snippet));
 }
@@ -609,6 +611,51 @@ function extractActivityLog(tar) {
   return tar.slice(log.offset, log.offset + log.length);
 }
 
+function extractAndLoadLog(log) {
+  var start_index = [
+    'hack-33025-touchpad_activity="""\n' +
+    'begin-base64 644 touchpad_activity_log.tar\n',
+    'touchpad_activity="""\n' +
+    'begin-base64 644 touchpad_activity_log.tar\n',
+    'hack-33025-touchpad_activity=<multiline>\n' +
+    '---------- START ----------\n' +
+    'begin-base64 644 touchpad_activity_log.tar\n',
+  ];
+  var end_index = [
+    '"""',
+    '"""',
+    '---------- END ----------',
+  ];
+  // extract touchpad_activity_log.tar' from log
+  var start_idx = -1, end_idx;
+  for (var i = 0; i < start_index.length; i++) {
+    start_idx = log.indexOf(start_index[i]);
+    if (start_idx !== -1) {
+      start_idx += start_index[i].length;
+      end_idx = log.indexOf(end_index[i], start_idx) - 1;
+      break;
+    }
+  }
+  if (start_idx === -1) {
+    return;
+  }
+
+  var touchpad_tar_base64 = log.substring(start_idx, end_idx);
+
+  // decode base64
+  var touchpad_tar = Base64Binary.decodeArrayBuffer(touchpad_tar_base64);
+
+  // extract log.gz from touchpad.tar
+  var log_gz = extractActivityLog(touchpad_tar);
+
+  // extract log.gz
+  var log_data =
+    (new JXG.Util.Unzip(new Uint8Array(log_gz))).unzip()[0][0];
+
+  // parse as json and load
+  loadLog(convertStrToLog(log_data));
+}
+
 $(document).ready(function() {
   setup();
   $('#playpause').button({
@@ -668,10 +715,10 @@ $(document).ready(function() {
   $('#shrink').button({
     text: true,
   }).click(shrink);
-  $("#export").button({
+  $('#export').button({
     text: true,
   }).click(exportRange);
-  $("#prev_finger_touch").button({
+  $('#prev_finger_touch').button({
     text: true,
   }).click(gotoPrevFTS);
   $('#next_finger_touch').button({
@@ -725,34 +772,27 @@ $(document).ready(function() {
     }
   });
 
-  $('#bzipupload').change(function () {
+  $('#upload').change(function () {
     // read selected file
     reader = new FileReader();
     reader.onload = function (event) {
-
-      // extract feedback.bz2
-      var feedback_bz2 = new Uint8Array(event.target.result);
-      var feedback = bzip2.simple(bzip2.array(feedback_bz2));
-
-      // extract touchpad_activity_log.tar' from feedback
-      var start_key = 'hack-33025-touchpad_activity="""\nbegin-base64 644 touchpad_activity_log.tar';
-      var start_idx = feedback.indexOf(start_key) + start_key.length + 1;
-      var end_idx = feedback.indexOf('====', start_idx) -1;
-      var touchpad_tar_base64 = feedback.substring(start_idx, end_idx);
-
-      // decode base64
-      var touchpad_tar = Base64Binary.decodeArrayBuffer(touchpad_tar_base64);
-
-      // extract log.gz from touchpad.tar
-      var log_gz = extractActivityLog(touchpad_tar);
-
-      // extract log.gz
-      var log_data = (new JXG.Util.Unzip(new Uint8Array(log_gz))).unzip()[0][0];
-
-      // parse as json and load
-      loadLog(convertStrToLog(log_data));
+      var feedback = '';
+      var dataArray = new Uint8Array(event.target.result);
+      var unzipper = new JSUnzip({
+        'charCodeAt': function(index) {
+          return dataArray[index];
+        },
+      });
+      // If the file is not a valid zip file, assume it is bzip2.
+      if (unzipper.isZipFile()) {
+        unzipper.readEntries();
+        feedback = JSInflate.inflate(unzipper.entries[0].data);
+      } else {
+        feedback = bzip2.simple(bzip2.array(dataArray));
+      }
+      extractAndLoadLog(feedback);
     };
-    reader.readAsArrayBuffer(document.getElementById('bzipupload').files[0]);
+    reader.readAsArrayBuffer(document.getElementById('upload').files[0]);
   });
 
   logname = $.url().fparam('id');
@@ -836,7 +876,7 @@ $(document).ready(function() {
           <textarea id="text_box">Drag and drop a touchpad/touchscreen log file here.</textarea></div>
         <div id="feedbackupload">
           <h3>From Feedback Report</h3>
-          Load from Feedback Report: <input type="file" id="bzipupload"></input>
+          Load from Feedback Report: <input type="file" id="upload"></input>
         </div>
         <br style="clear: both;"/>
       </div>
