@@ -87,13 +87,14 @@ bool PropProvider::CheckIntegrity() {
 
 template<typename Type>
 GesturesProp* PropProvider::CreateProp(const char* name, Type* loc,
-                                       const Type init) {
+                                       size_t count, const Type* init) {
   GesturesProp* prop = new GesturesPropImpl<Type>(name, loc);
   if (properties_cache_.find(name) != properties_cache_.end()) {
     prop->SetValue(properties_cache_[name]);
     properties_cache_.erase(name);
   } else {
-    *loc = init;
+    for (size_t i = 0; i < count; i++)
+      loc[i] = init[i];
   }
   properties_[std::string(name)] = prop;
   return prop;
@@ -176,9 +177,16 @@ void PropProvider::Free(GesturesProp* prop) {
 // Wrapper method to create properties for the gestures library.
 template<typename Type>
 GesturesProp* PropProviderCreate(void* data, const char* name, Type* loc,
-                                 const Type init) {
+                                 size_t count, const Type* init) {
   PropProvider* pp = static_cast<PropProvider*>(data);
-  return pp->CreateProp<Type>(name, loc, init);
+  return pp->CreateProp<Type>(name, loc, count, init);
+}
+
+GesturesProp* PropProviderCreateString(void* data, const char* name,
+                                       const char** loc,
+                                       const char* const init) {
+  PropProvider* pp = static_cast<PropProvider*>(data);
+  return pp->CreateProp<const char*>(name, loc, static_cast<size_t>(1), &init);
 }
 
 // Dummy method. This provider does not support Get/Set handlers.
@@ -198,7 +206,7 @@ GesturesPropProvider CPropProvider = {
     PropProviderCreate<int>,
     PropProviderCreate<short>,
     PropProviderCreate<GesturesPropBool>,
-    PropProviderCreate<const char*>,
+    PropProviderCreateString,
     PropProviderCreate<double>,
     PropProviderRegisterHandlers,
     PropProviderFree

@@ -56,7 +56,8 @@ class PropProvider {
   // The loc parameter has to point to the location of this variable.
   // It will be initialized with the value from the parameter init.
   template<typename Type>
-  GesturesProp* CreateProp(const char* name, Type* loc, const Type init);
+  GesturesProp* CreateProp(const char* name, Type* loc, size_t count,
+                           const Type* init);
 
   // Read a property.
   // The value parameter will store the property value, and will not be
