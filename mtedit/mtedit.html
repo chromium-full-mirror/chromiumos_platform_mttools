@@ -28,6 +28,9 @@ var json_obj;
 var use_server = false;
 var logname = undefined;
 
+var LOG_SCREEN = 'screen';
+var LOG_PAD = 'pad';
+
 function update_range(event, ui) {
   finger_view_controller.setRange(ui.values[0], ui.values[1]);
   var begin_event = finger_view_controller.getEvent(ui.values[0]);
@@ -551,7 +554,7 @@ function touchscreenToggle(on) {
   finger_view_controller.resetZooms();
 }
 
-function extractActivityLog(tar) {
+function extractActivityLog(tar, type) {
   // a tar file is a sequence of 512 byte blocks. Starting with a header block
   // followed by the contents of that file, repeated for as many files
   // as are in the archive. The file contents are padded if zeros to fill up
@@ -579,6 +582,9 @@ function extractActivityLog(tar) {
   var header_offset = 0;
   var log_list = new Array();
   var name_pattern = /touchpad_activity_([0-9\-]+)/;
+  if (type === LOG_SCREEN) {
+    name_pattern = /evdev/;
+  }
   while (header_offset + 512 < tar.byteLength) {
 
     // cannot read a name from the header? -> End of archive.
@@ -592,7 +598,11 @@ function extractActivityLog(tar) {
       // store file info in list
       result = new Object();
       result.name = name;
-      result.timestamp = name_pattern.exec(name)[1];
+      if (type === LOG_SCREEN) {
+        result.timestamp = 0;
+      } else {
+        result.timestamp = name_pattern.exec(name)[1];
+      }
       result.offset = header_offset + 512
       result.length = length;
       log_list.push(result)
@@ -608,52 +618,85 @@ function extractActivityLog(tar) {
     return a.timestamp < b.timestamp;
   });
   log = log_list[0];
-  return tar.slice(log.offset, log.offset + log.length);
+  var log_data = new Uint8Array(tar.slice(log.offset, log.offset + log.length));
+  if (type === LOG_SCREEN) {
+    var char_array = [];
+    for (var i = 0; i < log_data.length; i++) {
+      char_array.push(String.fromCharCode(log_data[i]));
+    }
+    return char_array.join('');
+  } else {
+    return (new JXG.Util.Unzip(log_data)).unzip()[0][0];
+  }
 }
 
 function extractAndLoadLog(log) {
-  var start_index = [
-    'hack-33025-touchpad_activity="""\n' +
-    'begin-base64 644 touchpad_activity_log.tar\n',
-    'touchpad_activity="""\n' +
-    'begin-base64 644 touchpad_activity_log.tar\n',
-    'hack-33025-touchpad_activity=<multiline>\n' +
-    '---------- START ----------\n' +
-    'begin-base64 644 touchpad_activity_log.tar\n',
-  ];
-  var end_index = [
-    '"""',
-    '"""',
-    '---------- END ----------',
-  ];
-  // extract touchpad_activity_log.tar' from log
-  var start_idx = -1, end_idx;
-  for (var i = 0; i < start_index.length; i++) {
-    start_idx = log.indexOf(start_index[i]);
-    if (start_idx !== -1) {
-      start_idx += start_index[i].length;
-      end_idx = log.indexOf(end_index[i], start_idx) - 1;
-      break;
+  var extractByInterface = function(type) {
+    var start_index = [
+      'hack-33025-touch' + type + '_activity="""\n' +
+      'begin-base64 644 touch' + type + '_activity_log.tar\n',
+      'touch' + type + '_activity="""\n' +
+      'begin-base64 644 touch' + type + '_activity_log.tar\n',
+      'hack-33025-touch' + type + '_activity=<multiline>\n' +
+      '---------- START ----------\n' +
+      'begin-base64 644 touch' + type + '_activity_log.tar\n',
+    ];
+    var end_index = [
+      '"""',
+      '"""',
+      '---------- END ----------',
+    ];
+    // extract matched tar from log
+    var start_idx = -1, end_idx;
+    for (var i = 0; i < start_index.length; i++) {
+      start_idx = log.indexOf(start_index[i]);
+      if (start_idx !== -1) {
+        start_idx += start_index[i].length;
+        end_idx = log.indexOf(end_index[i], start_idx) - 1;
+        break;
+      }
     }
+    if (start_idx === -1) {
+      return null;
+    }
+
+    var tar_base64 = log.substring(start_idx, end_idx);
+
+    // decode base64
+    var tar_file = Base64Binary.decodeArrayBuffer(tar_base64);
+
+    // extract log from tar file
+    return extractActivityLog(tar_file, type);
+  };
+
+
+  var logs = {};
+  var first_available_log = null;
+  var select = $('#select');
+
+  logs[LOG_PAD] = extractByInterface(LOG_PAD);
+  logs[LOG_SCREEN] = extractByInterface(LOG_SCREEN);
+
+  select.empty();  // Remove old options
+  $.each(logs, function(type, log) {
+    if (log !== null) {
+      if (first_available_log === null) {
+        first_available_log = log;
+      }
+      select.append($('<option></option>').attr('value', type).text(type));
+    }
+  });
+  select.change(function() {
+    var type = $(this).attr('value');
+    if (logs[type] !== null) {
+      loadLog(convertStrToLog(logs[type]));
+    }
+  });
+
+  // parse as json and load the first option
+  if (first_available_log !== null) {
+    loadLog(convertStrToLog(first_available_log));
   }
-  if (start_idx === -1) {
-    return;
-  }
-
-  var touchpad_tar_base64 = log.substring(start_idx, end_idx);
-
-  // decode base64
-  var touchpad_tar = Base64Binary.decodeArrayBuffer(touchpad_tar_base64);
-
-  // extract log.gz from touchpad.tar
-  var log_gz = extractActivityLog(touchpad_tar);
-
-  // extract log.gz
-  var log_data =
-    (new JXG.Util.Unzip(new Uint8Array(log_gz))).unzip()[0][0];
-
-  // parse as json and load
-  loadLog(convertStrToLog(log_data));
 }
 
 $(document).ready(function() {
@@ -877,6 +920,7 @@ $(document).ready(function() {
         <div id="feedbackupload">
           <h3>From Feedback Report</h3>
           Load from Feedback Report: <input type="file" id="upload"></input>
+          <select id="select"></select>
         </div>
         <br style="clear: both;"/>
       </div>
