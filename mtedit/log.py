@@ -27,6 +27,9 @@ cookies_file = os.path.join(script_dir, "mtedit.cookies")
 
 log_cache_dir = os.path.join(script_dir, "reports")
 
+# path for temporary screenshot
+screenshot_filepath = "extension/screenshot.jpg"
+
 def Log(source, options):
   """
     Returns a log object containg activity, evdev and system logs.
@@ -61,8 +64,8 @@ class AbstractLog(object):
       open(filename + ".jpg", "w").write(self.image)
 
   def CleanUp(self):
-    if os.path.exists("screenshot.jpg"):
-      os.remove("screenshot.jpg")
+    if os.path.exists(screenshot_filepath):
+      os.remove(screenshot_filepath)
 
 
 class FileLog(AbstractLog):
@@ -82,7 +85,7 @@ class FileLog(AbstractLog):
       self.system = open(filename + ".system").read()
     if os.path.exists(filename + ".jpg"):
       self.image = open(filename + ".jpg").read()
-      file("screenshot.jpg", "w").write(self.image)
+      file(screenshot_filepath, "w").write(self.image)
 
 
 class FeedbackLog(AbstractLog):
@@ -124,7 +127,7 @@ class FeedbackLog(AbstractLog):
 
     # Only write to screenshot.jpg if we will be viewing the screenshot
     if not options.download and self.image:
-      file("screenshot.jpg", "w").write(self.image)
+      file(screenshot_filepath, "w").write(self.image)
 
   def _GetOpener(self):
     try:

@@ -48,12 +48,10 @@ class TPViewHTTPRequestHandler(SimpleHTTPRequestHandler):
     if self.path.startswith("/load/"):
       self.respond(data.log, "text/plain")
       data.loaded = True
-
-    elif self.path.startswith("/edit"):
-      self.path = "mtedit.html"
-      SimpleHTTPRequestHandler.do_GET(self)
-
     else:
+      if self.path.startswith("/edit"):
+        self.path = "mtedit.html"
+      self.path = 'extension/' + self.path
       SimpleHTTPRequestHandler.do_GET(self)
 
   def do_POST(self):
