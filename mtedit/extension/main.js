@@ -1,0 +1,833 @@
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+var finger_view_controller;
+var current_layer = 0;
+var json_obj;
+
+var use_server = false;
+var logname = undefined;
+
+var LOG_SCREEN = 'screen';
+var LOG_PAD = 'pad';
+
+function update_range(event, ui) {
+  finger_view_controller.setRange(ui.values[0], ui.values[1]);
+  var begin_event = finger_view_controller.getEvent(ui.values[0]);
+  $('#begin_event').val(begin_event);
+  if ((beginTimestamp = finger_view_controller.getTimestamp(ui.values[0])) > 0)
+    $('#input_begin_time').val(beginTimestamp);
+  var end_event = finger_view_controller.getEvent(ui.values[1]);
+  $('#end_event').val(end_event);
+  endTimestamp = finger_view_controller.getPreviousHardwareStateTimestamp(
+      ui.values[1]);
+  if (endTimestamp > 0)
+    $('#input_end_time').val(endTimestamp);
+  var values = $('#slider').slider('option', 'values');
+  $('#num_fts').text('Finger Touch Section (' +
+                     finger_view_controller.getFTSIndex(values[1]) + ' / ' +
+                     '0 ~ ' + (finger_view_controller.getNumFTS() - 1) + '): ');
+}
+
+function loadLogObj(obj, isNew) {
+  if (!isNew) {
+    var values = $('#slider').slider('option', 'values');
+    var beginTime = finger_view_controller.getGETimestamp(values[0]);
+    var endTime = finger_view_controller.getLETimestamp(values[1]);
+  }
+  finger_view_controller.setEntriesLog(obj, current_layer);
+  finger_view_controller.initFTS();
+  var MAX_SIZE = 10000;
+  var min = Math.max(0, finger_view_controller.entries.length - MAX_SIZE);
+  var max = finger_view_controller.entries.length - 1;
+  if (isNew) {
+    var values = [min, max];
+  } else {
+    values[0] = finger_view_controller.getHardwareStateGETimestamp(beginTime);
+    values[1] = finger_view_controller.getHardwareStateLETimestamp(endTime);
+  }
+  $('#slider').slider({
+    min: min,
+    max: max,
+    values: values,
+    range: true,
+    slide: update_range,
+    change: update_range
+  });
+  update_range(null, { values: values });
+  finger_view_controller.resetZooms();
+}
+
+/**
+ * Converts raw input event stream from evdev input to the entries structure
+ * expected by finger_view_controller.js.
+ * @param {string} data The raw log file data in the following format:
+ *     # Metadata in comment lines.
+ *     # absinfo: [event_type] [min] [max] [fuzz] [flat] [resolution]
+ *     E: [timestamp] [event_type] [event_code] [event_value] [slot]
+ * @return {Object} Event structure expected by loadLogObj.
+ */
+function convertEventStreamToEntries(data) {
+  // Clone an object by serializing and parsing it.
+  var clone = function(obj) {
+    return JSON.parse(JSON.stringify(obj));
+  }
+
+  // Default hardware properties.
+  var obj = {
+    'entries': [],
+    'hardwareProperties': {
+      'bottom': 1000.0,
+      'left': 0.0,
+      'right': 2000.0,
+      'top': 0.0,
+      'xResolution': 1.0,
+      'yResolution': 1.0},
+    'properties': {
+      'Pressure Calibration Offset': 0.0,
+      'Pressure Calibration Slope': 1.0,
+  }};
+  var evt = {
+    'fingers': [],
+    'timestamp': 0,
+    'touchCount': 0,
+    'type': 'hardwareState',
+  };
+  var eventCodes = {
+    '002f': 'slot',
+    '0030': 'touchMajor',
+    '0035': 'positionX',
+    '0036': 'positionY',
+    '0039': 'trackingId',
+    '003a': 'pressure',
+  };
+  var ignoreCodes = {
+    '0000': 'abs_x',
+    '0001': 'abs_y',
+    '0018': 'abs_pressure',
+  };
+  var slotDefaults = {
+    'flags': 0,
+    'trackingId': -1,
+  };
+  var slots = [];
+  var slot = -1;
+  var lines = data.split('\n');
+  for (var i = 0; i < lines.length; i++) {
+    if (lines[i].slice(0, 10) == '# absinfo:') {
+      var val = lines[i].split(' ');
+      switch (val[2]) {
+        case '0':
+          obj.hardwareProperties.right = parseInt(val[4]) + 1;
+          obj.hardwareProperties.xResolution = parseInt(val[7]);
+          break;
+        case '1':
+          obj.hardwareProperties.bottom = parseInt(val[4]) + 1;
+          obj.hardwareProperties.yResolution = parseInt(val[7]);
+          break;
+        case '47':  // Slot.
+          var maxSlot = parseInt(val[4]);
+          while (slots.length <= maxSlot)
+            slots.push(clone(slotDefaults));
+          break;
+      }
+    } else if (lines[i].slice(0, 3) == 'E: ') {
+      var val = lines[i].split(' ');
+      switch (val[2]) {  // Event type.
+        case '0000':  // EV_SYN: Clone current hardware state and push to list.
+          // First copy slots into fingers.
+          evt.fingers = [];
+          for (var j = 0; j < slots.length; j++) {
+            if (slots[j].trackingId >= 0)
+              evt.fingers.push(slots[j]);
+          }
+          evt.touchCount = evt.fingers.length;
+          evt.timestamp = parseFloat(val[1]);
+          obj.entries.push(clone(evt));
+          break;
+        case '0003':  // EV_ABS: Update hardware state.
+          if (eventCodes[val[3]]) {
+            // Parse slot identifier on event info line.
+            if (val.length > 5)
+              slot = parseInt(val[5]);
+
+            if (eventCodes[val[3]] == 'slot') {
+              slot = parseInt(val[4]);
+            } else if (slot >= 0) {
+              // Initialize the requested slot if not set.
+              if (!slots[slot])
+                slots[slot] = clone(slotDefaults);
+
+              // Make up tracking ID if we miss the start of a touch.
+              if (eventCodes[val[3]] != 'trackingId' &&
+                  slots[slot].trackingId == -1)
+                slots[slot].trackingId = slot + 1;
+
+              slots[slot][eventCodes[val[3]]] = parseInt(val[4]);
+            }
+          } else if (!ignoreCodes[val[3]]) {
+            console.log('Unrecognized event type ' + val[2] +
+                        ' code ' + val[3]);
+          }
+          break;
+      }
+    }
+  }
+  // For touchscreens the absolute value is more useful than the scaled value.
+  obj.hardwareProperties.xResolution = 1.0;
+  obj.hardwareProperties.yResolution = 1.0;
+  return obj;
+}
+
+function convertEntriesToEventStream(obj) {
+  var lines = [];
+  // Hardware properties
+  var meta = '# absinfo:';
+  var hardwareProperties = obj.hardwareProperties;
+  lines.push(meta + ' 0 0 ' + (hardwareProperties.right - 1) + ' 0 0 ' +
+      hardwareProperties.xResolution);
+  lines.push(meta + ' 1 0 ' + (hardwareProperties.bottom - 1) + ' 0 0 ' +
+      hardwareProperties.yResolution);
+  lines.push(meta + ' 47 0 ');  // Actual max slot will be filled in later
+  var maxSlotIndex = lines.length - 1;
+  // Events
+  var evt = 'E:';
+  var syn = '0000';  // EV_SYN
+  var abs = '0003';  // EV_ABS
+  var eventCodes = {
+    'slot': '002f',
+    'touchMajor': '0030',
+    'positionX': '0035',
+    'positionY': '0036',
+    'trackingId': '0039',
+    'pressure': '003a',
+  };
+  var checkEvents = ['positionX', 'positionY', 'pressure', 'touchMajor'];
+  var slotMap = {};
+  var clearSlots = {};
+  var freeSlots = [0];
+  var maxSlot = 0;
+  for (var i = 0; i < obj.entries.length; i++) {
+    var entry = obj.entries[i];
+    // Zero clearSlots to mark which trackingIds are still valid
+    for (var trackingId in clearSlots) {
+      if (clearSlots.hasOwnProperty(trackingId)) {
+        clearSlots[trackingId] = true;
+      }
+    }
+    if (entry.fingers !== undefined) {
+      for (var j = 0; j < entry.fingers.length; j++) {
+        var finger = entry.fingers[j];
+        var trackingId = finger.trackingId;
+        // If we have not already assigned a slot to this trackingId,
+        // find/create one for it
+        if (slotMap[trackingId] === undefined) {
+          if (freeSlots.length === 0) {
+            maxSlot += 1;
+            freeSlots.push(maxSlot);
+          }
+          slotMap[trackingId] = freeSlots.pop();
+        }
+        var slot = slotMap[trackingId];
+        // This trackingId is still valid, do not clear
+        clearSlots[trackingId] = false;
+        lines.push(evt + ' 0 ' + abs + ' '  + eventCodes.slot + ' ' + slot);
+        lines.push(evt + ' 0 ' + abs + ' '  + eventCodes.trackingId + ' ' +
+            trackingId);
+        // Add all the other properties of the finger, other than trackingId
+        // and the slot
+        for (var k = 0; k < checkEvents.length; k++) {
+          var key = checkEvents[k];
+          if (key in finger) {
+            lines.push(evt + ' 0 ' + abs + ' ' + eventCodes[key] + ' ' +
+                finger[key]);
+          }
+        }
+      }
+    }
+    for (var trackingId in clearSlots) {
+      if (clearSlots.hasOwnProperty(trackingId)) {
+        if (clearSlots[trackingId]) {
+          // We are done with this particular trackingId, free that slot
+          lines.push(evt + ' 0 ' + abs + ' ' + eventCodes.slot + ' ' +
+              slotMap[trackingId]);
+          lines.push(evt + ' 0 ' + abs + ' ' + eventCodes.trackingId + ' -1 ');
+          freeSlots.push(slotMap[trackingId]);
+          delete clearSlots[trackingId];
+          delete slotMap[trackingId];
+        }
+      }
+    }
+    if (entry.timestamp !== undefined) {
+      lines.push(evt + ' ' + entry.timestamp + ' ' + syn);
+    }
+  }
+  // Fill in the maximum index slot we needed to use
+  lines[maxSlotIndex] += maxSlot
+  return lines.join('\n');
+}
+
+/**
+ * Loads the log frames from json.
+ * @param {Object} obj Event structure expected by loadLogObj.
+ */
+function loadLog(obj) {
+    if (!obj) {
+      alert('Unrecognized input file');
+      return;
+    }
+    // If obj.isTouchScreen is true, then manually switch to touchscreen mode
+    touchscreenToggle(!!obj.isTouchscreen);
+    json_obj = obj;
+    generateRadioButtons(obj);
+    current_layer = 0;
+    loadLogObj(obj, true);
+}
+
+function convertStrToLog(str) {
+  var obj;
+  if (str[0] == '#' || str[0] == 'E') {  // A touchscreen log
+    obj = convertEventStreamToEntries(str);
+    obj.isTouchscreen = true;
+  } else if (str[0] == '{') {  // A touchpad log
+    obj = jQuery.parseJSON(str);
+    obj.isTouchscreen = false;
+  }
+  return obj;
+}
+
+function handleFileSelect(evt) {
+  $('#text_box').removeClass('text_box_hilight');
+  evt.stopPropagation();
+  evt.preventDefault();
+
+  var files = evt.dataTransfer.files;  // FileList object.
+
+  var file = files[0];
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    loadLog(convertStrToLog(e.target.result));
+  };
+  reader.readAsText(file);
+}
+
+var count = 0;
+
+function handleDragOver(evt) {
+  evt.stopPropagation();
+  evt.preventDefault();
+}
+
+function handleDragEnter(evt) {
+  $('#text_box').addClass('text_box_hilight');
+  evt.stopPropagation();
+  evt.preventDefault();
+}
+
+function handleDragOut(evt) {
+  $('#text_box').removeClass('text_box_hilight');
+  evt.stopPropagation();
+  evt.preventDefault();
+}
+
+function setup() {
+  var dropZone = document.getElementById('text_box');
+  dropZone.addEventListener('dragenter', handleDragEnter, false);
+  dropZone.addEventListener('dragleave', handleDragOut, false);
+  dropZone.addEventListener('dragover', handleDragOver, false);
+  dropZone.addEventListener('drop', handleFileSelect, false);
+}
+
+// fix layerX, layerY warnings
+(function(){
+    // remove layerX and layerY
+    var all = $.event.props,
+        len = all.length,
+        res = [];
+    while (len--) {
+      var el = all[len];
+      if (el != 'layerX' && el != 'layerY') res.push(el);
+    }
+    $.event.props = res;
+}());
+
+function begin_stepBack() {
+  var values = $('#slider').slider('option', 'values');
+  var minValue = $('#slider').slider('option', 'min');
+  if (values[0] > minValue) {
+    var newValue = finger_view_controller.prevHardwareState(values[0]);
+    if (newValue < 0)
+      return;
+    values[0] = newValue;
+    $('#slider').slider('option', 'values', values);
+    $('#input_begin_time').val(finger_view_controller.getTimestamp(newValue));
+  }
+}
+
+function begin_stepForward() {
+  var values = $('#slider').slider('option', 'values');
+  if (values[0] < values[1]) {
+    var newValue = finger_view_controller.nextHardwareState(values[0]);
+    if (newValue < 0)
+      return;
+    values[0] = newValue;
+    $('#slider').slider('option', 'values', values);
+    $('#input_begin_time').val(finger_view_controller.getTimestamp(newValue));
+  }
+}
+
+function end_stepBack() {
+  var values = $('#slider').slider('option', 'values');
+  if (values[1] > values[0]) {
+    var newValue = finger_view_controller.prevHardwareState(values[1]);
+    if (newValue < 0)
+      return;
+    values[1] = newValue;
+    $('#slider').slider('option', 'values', values);
+    $('#input_end_time').val(finger_view_controller.getTimestamp(newValue));
+  }
+}
+
+function end_stepForward() {
+  var values = $('#slider').slider('option', 'values');
+  var maxValue = $('#slider').slider('option', 'max');
+  if (values[1] < maxValue) {
+    var newValue = finger_view_controller.nextHardwareState(values[1]);
+    if (newValue < 0)
+      return;
+    values[1] = newValue;
+    $('#slider').slider('option', 'values', values);
+    $('#input_end_time').val(finger_view_controller.getTimestamp(newValue));
+  }
+}
+
+function setBeginTimestamp() {
+  timestamp = $('#input_begin_time').val();
+  var values = $('#slider').slider('option', 'values');
+  var minValue = $('#slider').slider('option', 'min');
+  var maxValue = $('#slider').slider('option', 'max');
+  var newValue = finger_view_controller.getHardwareStateLETimestamp(timestamp);
+  if (newValue >= minValue && newValue <= maxValue) {
+    values[0] = (newValue >= values[1] ? values[1] : newValue);
+    $('#slider').slider('option', 'values', values);
+  }
+}
+
+function setEndTimestamp() {
+  timestamp = $('#input_end_time').val();
+  var values = $('#slider').slider('option', 'values');
+  var minValue = $('#slider').slider('option', 'min');
+  var maxValue = $('#slider').slider('option', 'max');
+  var newValue = finger_view_controller.getHardwareStateGETimestamp(timestamp);
+  if (newValue >= minValue && newValue <= maxValue) {
+    values[1] = (newValue <= values[0] ? values[0] : newValue);
+    $('#slider').slider('option', 'values', values);
+  }
+}
+
+function gotoPrevFTS() {
+  var values = $('#slider').slider('option', 'values');
+  var fts = finger_view_controller.getPrevFTS(values);
+  $('#slider').slider('option', 'values', fts);
+}
+
+function gotoNextFTS() {
+  var values = $('#slider').slider('option', 'values');
+  var fts = finger_view_controller.getNextFTS(values);
+  $('#slider').slider('option', 'values', fts);
+}
+
+function gotoFirstFTS() {
+  var fts = finger_view_controller.getFirstFTS();
+  $('#slider').slider('option', 'values', fts);
+}
+
+function gotoLastFTS() {
+  var fts = finger_view_controller.getLastFTS();
+  $('#slider').slider('option', 'values', fts);
+}
+
+function expandAllFTS() {
+  var values = finger_view_controller.getAllEntries();
+  $('#slider').slider('option', 'values', values);
+}
+
+function shrink() {
+  var values = $('#slider').slider('option', 'values');
+  var snippet = finger_view_controller.getSnippet(values[0], values[1]);
+  $('#text_box').val(JSON.stringify(snippet, null, 2));
+  loadLogObj(snippet, true);
+
+  if (use_server) {
+    $.post('/save/' + logname, JSON.stringify(snippet, null, 2), function () {
+      alert('Saved');
+    });
+  }
+}
+
+function exportRange() {
+  var values = $('#slider').slider('option', 'values');
+  var snippet = finger_view_controller.getSnippet(values[0], values[1]);
+  $('#text_box').val(convertEntriesToEventStream(snippet));
+}
+
+function generateRadioButtons(obj) {
+  var radioHTML = '<input type="radio" name="viewLayer" value="0" ' +
+                  'checked="checked" onclick="radioChange(event)">' +
+                  obj.interpreterName + '</input><br/>';
+  var layer = 0;
+  while (obj.hasOwnProperty('nextLayer')) {
+    obj = obj.nextLayer;
+    layer++;
+    radioHTML += '<input type="radio" name="viewLayer" value="' + layer +
+                 '" onclick="radioChange(event)">' + obj.interpreterName +
+                 '</input><br/>';
+  }
+  document.getElementById('button_div').innerHTML = radioHTML;
+  if (layer > 1) {
+    $('#button_div').css('visibility', 'visible');
+  } else {
+    $('#button_div').css('visibility', 'hidden');
+  }
+}
+
+function generateUnittest() {
+  var interpreter_name = $('#unittest_interpreter').val();
+  var unittest_name = $('#unittest_testname').val();
+
+  var values = $('#slider').slider('option', 'values');
+  var unittest = finger_view_controller.getUnitTest(
+      values[0], values[1], interpreter_name, unittest_name);
+  $('#unittest_box').val(unittest);
+}
+
+function radioChange(e) {
+  if (e.target.value != current_layer) {
+    current_layer = e.target.value;
+    loadLogObj(json_obj, false);
+  }
+}
+
+function touchscreenToggle(on) {
+  var isTouchscreen = false;
+  var inputWidth = '';
+  var canvasWidth = 480, canvasHeight = 320;
+  var canvas;
+  var image = null;
+  if (on) {
+    isTouchscreen = true;
+    inputWidth = 1100;
+    canvasWidth = 1080;
+    canvasHeight = 720;
+    image = document.getElementById('screenshot');
+  }
+  $('.pad').toggle(!isTouchscreen);
+  $('.screen').toggle(isTouchscreen);
+  $('#inputview').width(inputWidth);
+  $('.view-container').width(canvasWidth);
+  $('.view-container').height(canvasHeight);
+  canvas = document.getElementById('fview');
+  canvas.setAttribute('width', canvasWidth);
+  canvas.setAttribute('height', canvasHeight);
+  finger_view_controller.setHighlightPopup(on);
+  finger_view_controller.setBackground(image);
+  finger_view_controller.resetZooms();
+}
+
+function extractActivityLog(tar, type) {
+  // a tar file is a sequence of 512 byte blocks. Starting with a header block
+  // followed by the contents of that file, repeated for as many files
+  // as are in the archive. The file contents are padded if zeros to fill up
+  // multiples of 512 byte blocks.
+
+  // extracts name from tar file header
+  function getName(header_offset) {
+    name_array = new Uint8Array(tar.slice(header_offset, header_offset + 100));
+    if (name_array[0] == 0) {
+      return undefined;
+    }
+    return String.fromCharCode.apply(null, name_array);
+  }
+
+  // extracts length from tar file header
+  function getLength(header_offset) {
+    start = header_offset + 124;
+    length_array = new Uint8Array(tar.slice(start, start + 12));
+    length_string = String.fromCharCode.apply(null, length_array);
+    return parseInt(length_string, 8);
+  }
+
+
+  // iterate over all files and collect all activity logs
+  var header_offset = 0;
+  var log_list = new Array();
+  var name_pattern = /touchpad_activity_([0-9\-]+)/;
+  if (type === LOG_SCREEN) {
+    name_pattern = /evdev/;
+  }
+  while (header_offset + 512 < tar.byteLength) {
+
+    // cannot read a name from the header? -> End of archive.
+    var name = getName(header_offset);
+    if (name == undefined)
+      break;
+
+    var length = getLength(header_offset);
+
+    if (name_pattern.test(name)) {
+      // store file info in list
+      result = new Object();
+      result.name = name;
+      if (type === LOG_SCREEN) {
+        result.timestamp = 0;
+      } else {
+        result.timestamp = name_pattern.exec(name)[1];
+      }
+      result.offset = header_offset + 512
+      result.length = length;
+      log_list.push(result)
+    }
+
+    // Next header starts after the file on the next 512 byte aligned
+    // block.
+    header_offset = Math.ceil((header_offset+length) / 512 + 1) * 512;
+  }
+
+  // sort by descending timestamps to find latest file
+  log_list.sort(function(a, b) {
+    return a.timestamp < b.timestamp;
+  });
+  log = log_list[0];
+  var log_data = new Uint8Array(tar.slice(log.offset, log.offset + log.length));
+  if (type === LOG_SCREEN) {
+    var char_array = [];
+    for (var i = 0; i < log_data.length; i++) {
+      char_array.push(String.fromCharCode(log_data[i]));
+    }
+    return char_array.join('');
+  } else {
+    return (new JXG.Util.Unzip(log_data)).unzip()[0][0];
+  }
+}
+
+function extractAndLoadLog(log) {
+  var extractByInterface = function(type) {
+    var start_index = [
+      'hack-33025-touch' + type + '_activity="""\n' +
+      'begin-base64 644 touch' + type + '_activity_log.tar\n',
+      'touch' + type + '_activity="""\n' +
+      'begin-base64 644 touch' + type + '_activity_log.tar\n',
+      'hack-33025-touch' + type + '_activity=<multiline>\n' +
+      '---------- START ----------\n' +
+      'begin-base64 644 touch' + type + '_activity_log.tar\n',
+    ];
+    var end_index = [
+      '"""',
+      '"""',
+      '---------- END ----------',
+    ];
+    // extract matched tar from log
+    var start_idx = -1, end_idx;
+    for (var i = 0; i < start_index.length; i++) {
+      start_idx = log.indexOf(start_index[i]);
+      if (start_idx !== -1) {
+        start_idx += start_index[i].length;
+        end_idx = log.indexOf(end_index[i], start_idx) - 1;
+        break;
+      }
+    }
+    if (start_idx === -1) {
+      return null;
+    }
+
+    var tar_base64 = log.substring(start_idx, end_idx);
+
+    // decode base64
+    var tar_file = Base64Binary.decodeArrayBuffer(tar_base64);
+
+    // extract log from tar file
+    return extractActivityLog(tar_file, type);
+  };
+
+
+  var logs = {};
+  var first_available_log = null;
+  var select = $('#select');
+
+  logs[LOG_PAD] = extractByInterface(LOG_PAD);
+  logs[LOG_SCREEN] = extractByInterface(LOG_SCREEN);
+
+  select.empty();  // Remove old options
+  $.each(logs, function(type, log) {
+    if (log !== null) {
+      if (first_available_log === null) {
+        first_available_log = log;
+      }
+      select.append($('<option></option>').attr('value', type).text(type));
+    }
+  });
+  select.change(function() {
+    var type = $(this).attr('value');
+    if (logs[type] !== null) {
+      loadLog(convertStrToLog(logs[type]));
+    }
+  });
+
+  // parse as json and load the first option
+  if (first_available_log !== null) {
+    loadLog(convertStrToLog(first_available_log));
+  }
+}
+
+$(document).ready(function() {
+  setup();
+  $('#playpause').button({
+    text: false,
+    icons: {
+      primary: 'ui-icon-play'
+    }
+  });
+  var gc = new GraphController($('#gview'));
+  gc.setLineSegments([{'start': {'xPos': 0.1, 'yPos': 0.1},
+                       'end': {'xPos': 0.9, 'yPos': 0.5}}]);
+  var inGc = new GraphController($('#fview'));
+  finger_view_controller = new FingerViewController(
+      inGc, gc, $('#intext'), $('#popup'), $('#out-lock-head'));
+
+  $('#out-resetzoom').button({
+    icons: {
+      primary: 'ui-icon-arrow-4-diag'
+    }
+  }).click(function() {
+    gc.animResetZoom();
+  });
+
+  $('#in-resetzoom').button({
+    icons: {
+      primary: 'ui-icon-arrow-4-diag'
+    }
+  }).click(function() {
+    inGc.animResetZoom();
+  });
+
+  $('#begin_stepback').button({
+    text: false,
+    icons: {
+      primary: 'ui-icon-triangle-1-w'
+    }
+  }).click(begin_stepBack);
+  $('#begin_stepforward').button({
+    text: false,
+    icons: {
+      primary: 'ui-icon-triangle-1-e'
+    }
+  }).click(begin_stepForward);
+  $('#end_stepback').button({
+    text: false,
+    icons: {
+      primary: 'ui-icon-triangle-1-w'
+    }
+  }).click(end_stepBack);
+  $('#end_stepforward').button({
+    text: false,
+    icons: {
+      primary: 'ui-icon-triangle-1-e'
+    }
+  }).click(end_stepForward);
+
+  $('#shrink').button({
+    text: true,
+  }).click(shrink);
+  $('#export').button({
+    text: true,
+  }).click(exportRange);
+  $('#prev_finger_touch').button({
+    text: true,
+  }).click(gotoPrevFTS);
+  $('#next_finger_touch').button({
+    text: true,
+  }).click(gotoNextFTS);
+  $('#first_finger_touch').button({
+    text: true,
+  }).click(gotoFirstFTS);
+  $('#last_finger_touch').button({
+    text: true,
+  }).click(gotoLastFTS);
+  $('#all_finger_touch').button({
+    text: true,
+  }).click(expandAllFTS);
+  $('#unittest').button({
+    text: true,
+  }).click(generateUnittest);
+
+  $(window).keypress(function (event) {
+    switch (event.keyCode) {
+    case 44:  // ','  move the slider to previous fts
+      gotoPrevFTS();
+      break;
+    case 46:  // '.'  move the slider to next fts
+      gotoNextFTS();
+      break;
+    case 109:  // 'm' move the slider to the first fts
+      gotoFirstFTS();
+      break;
+    case 47:  // '/'  move the slider to the last fts
+      gotoLastFTS();
+      break;
+    case 97:  // 'a'  expand the slider to all entries
+      expandAllFTS();
+      break;
+    case 107:  // 'k'
+      end_stepBack();
+      break;
+    case 106:  // 'j'
+      end_stepForward();
+      break;
+    case 103:  // 'g'
+      begin_stepBack();
+      break;
+    case 104:  // 'h'
+      begin_stepForward();
+      break;
+    case 115:  // 's'
+      shrink();
+      break;
+    }
+  });
+
+  $('#upload').change(function () {
+    // read selected file
+    reader = new FileReader();
+    reader.onload = function (event) {
+      var feedback = '';
+      var dataArray = new Uint8Array(event.target.result);
+      var unzipper = new JSUnzip({
+        'charCodeAt': function(index) {
+          return dataArray[index];
+        },
+      });
+      // If the file is not a valid zip file, assume it is bzip2.
+      if (unzipper.isZipFile()) {
+        unzipper.readEntries();
+        feedback = JSInflate.inflate(unzipper.entries[0].data);
+      } else {
+        feedback = bzip2.simple(bzip2.array(dataArray));
+      }
+      extractAndLoadLog(feedback);
+    };
+    reader.readAsArrayBuffer(document.getElementById('upload').files[0]);
+  });
+
+  logname = $.url().fparam('id');
+  use_server = logname !== '';
+
+  if (use_server) {
+    $.get('/load/' + logname, function(data) {
+      loadLog(convertStrToLog(data));
+    }, 'text');
+  } else {
+    loadLog(secret_obj);
+  }
+});
+
