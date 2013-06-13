@@ -26,6 +26,16 @@ struct GesturesProp {
 
 namespace replay {
 
+template<typename Out, typename In>
+Out replay_lexical_cast(const In& in) {
+  return lexical_cast<Out>(in);
+}
+template<>
+inline GesturesPropBool replay_lexical_cast<GesturesPropBool, std::string>(
+    const std::string& in) {
+  return lexical_cast<int>(in);
+}
+
 // The PropProvider class provides a registry for properties. Properties are
 // key-value pairs with either int, short, bool, double or string values.
 // The properties can be set or read programmatically or parsed from a JSON
@@ -54,7 +64,7 @@ class PropProvider {
   template<typename Type>
   void GetPropValue(const char* name, Type* value) {
     if (properties_cache_.find(name) != properties_cache_.end()) {
-      *value = lexical_cast<Type>(properties_cache_[name]);
+      *value = replay_lexical_cast<Type>(properties_cache_[name]);
       properties_cache_.erase(name);
     }
   }

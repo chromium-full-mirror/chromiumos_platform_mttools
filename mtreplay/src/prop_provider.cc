@@ -26,7 +26,7 @@ class GesturesPropImpl : public GesturesProp {
   }
 
   virtual void SetValue(const std::string& value) {
-    *value_ = lexical_cast<Type>(value);
+    *value_ = replay_lexical_cast<Type>(value);
   }
 
   virtual std::string GetName() {
@@ -135,19 +135,19 @@ bool PropProvider::Load(const std::string& data) {
     case Value::TYPE_INTEGER: {
       int intVal;
       value->GetAsInteger(&intVal);
-      stringVal = lexical_cast<std::string>(intVal);
+      stringVal = replay_lexical_cast<std::string>(intVal);
       break;
     }
     case Value::TYPE_BOOLEAN: {
       bool boolVal;
       value->GetAsBoolean(&boolVal);
-      stringVal = lexical_cast<std::string>(boolVal);
+      stringVal = replay_lexical_cast<std::string>(boolVal);
       break;
     }
     case Value::TYPE_DOUBLE: {
       double doubleVal;
       value->GetAsDouble(&doubleVal);
-      stringVal = lexical_cast<std::string>(doubleVal);
+      stringVal = replay_lexical_cast<std::string>(doubleVal);
       break;
     }
     case Value::TYPE_STRING: {
