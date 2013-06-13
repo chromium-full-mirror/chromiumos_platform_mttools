@@ -14,7 +14,7 @@ setup-in-place:
 clean-in-place: CLEAN(replay)
 in-place: CXX_BINARY(replay)
 
-in-place: CPPFLAGS += -I$(SRC)/../../../gestures/in-place
-in-place: CPPFLAGS += -I$(SRC)/../../../libevdev/in-place
-in-place: LDFLAGS += -L$(SRC)/../../../gestures/in-place
-in-place: LDFLAGS += -L$(SRC)/../../../libevdev/in-place
+in-place: CPPFLAGS += -I$(SRC)/../../gestures/in-place
+in-place: CPPFLAGS += -I$(SRC)/../../libevdev/in-place
+in-place: LDFLAGS += -L$(SRC)/../../gestures/in-place
+in-place: LDFLAGS += -L$(SRC)/../../libevdev/in-place

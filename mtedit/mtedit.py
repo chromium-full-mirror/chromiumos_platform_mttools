@@ -13,7 +13,7 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 # path to directory which contains the log files accessed by tpview
 logs_dir = os.path.join(script_dir, "logs")
 
-class LogEditor(object):
+class MTEdit(object):
   """
     This class wraps the tpview server and allows log files to be viewed
     or edited.

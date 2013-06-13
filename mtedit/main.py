@@ -3,8 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from mtedit.editor import LogEditor
-from mtedit.log import Log
+from mtedit import MTEdit
+from mtlib import Log
 from optparse import OptionParser
 import sys
 
@@ -51,7 +51,7 @@ def main(argv):
                     help="Force an attempt to find and download a screenshot.")
   (options, args) = parser.parse_args()
 
-  editor = LogEditor(persistent=options.persistent)
+  editor = MTEdit(persistent=options.persistent)
 
   if options.serve:
     editor.Serve()

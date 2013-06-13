@@ -4,10 +4,10 @@
 #
 # This module provides an interface to the replay tool.
 from subprocess import Popen
-import os
 from threading import Thread
 from tempfile import NamedTemporaryFile
 
+import os
 
 def _GetAbsPath(path):
   """
@@ -18,7 +18,7 @@ def _GetAbsPath(path):
   return os.path.normpath(path)
 
 
-class Replay(object):
+class MTReplay(object):
   """
   This class provides a high level interface to invoke a replay tool process.
   It provides access to both the replay and the trim feature.
@@ -26,7 +26,7 @@ class Replay(object):
 
   # default path for executable
   _default_executable_path = os.path.join(os.path.dirname(__file__),
-                                          "replay/replay")
+                                          "replay")
 
   def __init__(self, platform_file, device_class=None,
                path_to_exe=_default_executable_path):

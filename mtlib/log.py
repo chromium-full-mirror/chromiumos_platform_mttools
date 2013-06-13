@@ -87,14 +87,77 @@ class FileLog(AbstractLog):
       self.image = open(filename + ".jpg").read()
       file(screenshot_filepath, "w").write(self.image)
 
+class FeedbackDownloader():
+  def __init__(self):
+    # setup cookies file and url opener
+    self.cookies = cookielib.MozillaCookieJar(cookies_file)
+    if os.path.exists(cookies_file):
+      self.cookies.load()
+    cookie_processor = urllib2.HTTPCookieProcessor(self.cookies)
+    self.opener = urllib2.build_opener(cookie_processor)
+    self._Login()
+
+  def _Login(self):
+    username = getpass.getuser()
+
+    # check if already logged in
+    url = "https://login.corp.google.com/"
+    data = self.opener.open(url).read()
+    if username in data:
+      return
+
+    # ask for credentials
+    print "Login to corp.google.com:"
+    password = getpass.getpass()
+    sys.stdout.write("OTP: ")
+    otp = sys.stdin.readline().strip()
+
+    # execute login by posting userdata to login.corp.google.com
+    url = "https://login.corp.google.com/login?ssoformat=CORP_SSO"
+    data = "u=%s&pw=%s&otp=%s" % (username, password, otp)
+    result = self.opener.open(url, data).read()
+
+    # check if the result displays error
+    if result.find("error") >= 0:
+      print "Login failed"
+      exit(-1)
+
+    # login was successful. save cookies to file to be reused later.
+    self.cookies.save()
+
+  def DownloadFile(self, url):
+    try:
+      return self.opener.open(url).read()
+    except urllib2.URLError:
+      return None
+
+  def DownloadSystemLog(self, id):
+    # First download the report.zip file
+    logfile = "report-%s-system_logs.zip" % id
+    url = ("https://feedback.corp.googleusercontent.com/binarydata/" +
+           "%s?id=%s&logIndex=0") % (logfile, id)
+    report = self.DownloadFile(url)
+    if not report or (report[0:2] != "BZ" and report[0:2] != "PK"):
+      print "Report does not include log files at %s" % url
+      return None
+    return report
+
+  def DownloadScreenshot(self, id):
+    url = "https://feedback.corp.googleusercontent.com/screenshot?id=%s" % id
+    image = self.DownloadFile(url)
+    if not image or imghdr.what("", image) != 'jpeg':
+      print "No screenshots available at %s" % url
+      return None
+    return image
 
 class FeedbackLog(AbstractLog):
   """
     Downloads logs and (possibly) screenshot from a feedback id or file name
   """
-  def __init__(self, id_or_filename, options):
+  def __init__(self, id_or_filename, options=None, force_latest=None):
     self.image = None
-    self.try_screenshot = options.screenshot
+    self.force_latest = force_latest
+    self.try_screenshot = options and options.screenshot
 
     if id_or_filename.endswith(".zip") or id_or_filename.endswith(".bz2"):
       self.report = open(id_or_filename).read()
@@ -105,11 +168,12 @@ class FeedbackLog(AbstractLog):
         # No corresponding screenshot available.
         pass
     else:
+      self.downloader = FeedbackDownloader()
       def GetAndUpdateCachedFile(cached_filename, downloader):
         try:
           return open(cached_filename).read()
         except IOError:
-          data = downloader(id_or_filename, self._GetOpener())
+          data = downloader(id_or_filename)
           # Cache the data on disk
           if not os.path.exists(log_cache_dir):
             os.makedirs(log_cache_dir)
@@ -117,49 +181,18 @@ class FeedbackLog(AbstractLog):
           return data
       self.report = GetAndUpdateCachedFile(
           os.path.join(log_cache_dir, id_or_filename + ".zip"),
-          self._DownloadSystemLog)
+          self.downloader.DownloadSystemLog)
       self._ExtractSystemLog()
       self._ExtractLogFiles()
       if self.try_screenshot:
         self.image = GetAndUpdateCachedFile(
             os.path.join(log_cache_dir, id_or_filename + ".jpg"),
-            self._DownloadScreenshot)
+            self.downloader.DownloadScreenshot)
 
     # Only write to screenshot.jpg if we will be viewing the screenshot
-    if not options.download and self.image:
+    if options and not options.download and self.image:
       file(screenshot_filepath, "w").write(self.image)
 
-  def _GetOpener(self):
-    try:
-      return self.opener
-    except AttributeError:
-      # setup cookies file and url opener
-      self.cookies = cookielib.MozillaCookieJar(cookies_file)
-      if os.path.exists(cookies_file):
-        self.cookies.load()
-      cookie_processor = urllib2.HTTPCookieProcessor(self.cookies)
-      self.opener = urllib2.build_opener(cookie_processor)
-      return self.opener
-
-  def _Login(self, opener):
-    print "Login to corp.google.com:"
-    username = getpass.getuser()
-    password = getpass.getpass()
-    sys.stdout.write("OTP: ")
-    otp = sys.stdin.readline().strip()
-
-    # execute login by posting userdata to login.corp.google.com
-    url = "https://login.corp.google.com/login?ssoformat=CORP_SSO"
-    data = "u=%s&pw=%s&otp=%s" % (username, password, otp)
-    result = opener.open(url, data).read()
-
-    # check if the result displays error
-    if result.find("error") >= 0:
-      print "Login failed"
-      exit(-1)
-
-    # login was successful. save cookies to file to be reused later.
-    self.cookies.save()
 
   def _GetLatestFile(self, match, tar):
     # find file name containing match with latest timestamp
@@ -171,32 +204,6 @@ class FeedbackLog(AbstractLog):
       sys.exit(-1)
     return tar.extractfile(names[-1])
 
-  def _DownloadSystemLog(self, id, opener):
-    # First download the report.zip file
-    logfile = "report-%s-system_logs.zip" % id
-    url = ("https://feedback.corp.googleusercontent.com/binarydata/" +
-           "%s?id=%s&logIndex=0") % (logfile, id)
-    report = opener.open(url).read()
-    file("test.zip", "w").write(report)
-
-    if report[0:2] != "BZ" and report[0:2] != "PK":
-      # not a zip/bzip file. Log in and try again.
-      self._Login(opener)
-      report = opener.open(url).read()
-    return report
-
-  def _DownloadScreenshot(self, id, opener):
-    url = "https://feedback.corp.googleusercontent.com/screenshot?id=%s" % id
-    image = ""
-    try:
-      image = opener.open(url).read()
-      if imghdr.what("", image) != 'jpeg':
-        # We aren't authenticated; log in and try again.
-        self._Login(opener)
-        image = opener.open(url).read()
-    except urllib2.URLError:
-      print "No screenshots available - %s" % url
-    return image
 
   def _ExtractSystemLog(self):
     if self.report[0:2] == "BZ":
@@ -281,31 +288,38 @@ class FeedbackLog(AbstractLog):
           for filename in activity_tar_file.getnames()
               if filename.find('cmt') == -1]
 
-    logs = ExtractByInterface('pad') + ExtractByInterface('screen')
-    if not logs:
-      print ("Cannot find touchpad_activity_log.tar or " +
-          "touchscreen_activity_log.tar in systems log file.")
-      sys.exit(-1)
-
-    if len(logs) == 1:
+    if self.force_latest == "pad":
+      logs = ExtractByInterface('pad')
+      idx = 0
+    elif self.force_latest == "screen":
+      logs = ExtractByInterface('screen')
       idx = 0
     else:
-      while True:
-        print "Which log file would you like to use?"
-        for i, (name, extract_func) in enumerate(logs):
-          if name.startswith('evdev'):
-            name = 'touchscreen log - ' + name
-          print i, name
-        print ">"
-        selection = sys.stdin.readline()
-        try:
-          idx = int(selection)
-          if idx < 0 or idx >= len(logs):
-            print "Number out of range"
-          else:
-            break
-        except:
-          print "Not a number"
+      logs = ExtractByInterface('pad') + ExtractByInterface('screen')
+      if not logs:
+        print ("Cannot find touchpad_activity_log.tar or " +
+            "touchscreen_activity_log.tar in systems log file.")
+        sys.exit(-1)
+
+      if len(logs) == 1:
+        idx = 0
+      else:
+        while True:
+          print "Which log file would you like to use?"
+          for i, (name, extract_func) in enumerate(logs):
+            if name.startswith('evdev'):
+              name = 'touchscreen log - ' + name
+            print i, name
+          print ">"
+          selection = sys.stdin.readline()
+          try:
+            idx = int(selection)
+            if idx < 0 or idx >= len(logs):
+              print "Number out of range"
+            else:
+              break
+          except:
+            print "Not a number"
 
     name, extract_func = logs[idx]
     self.activity, self.evdev = extract_func(name)

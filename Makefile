@@ -15,19 +15,23 @@ SRC=$(shell readlink -f .)
 all: replay
 
 replay:
-	OUT=. $(MAKE) -C mtlib/replay all
+	OUT=. $(MAKE) -C mtreplay all
 
 clean:
-	OUT=. $(MAKE) -C mtlib/replay clean
+	OUT=. $(MAKE) -C mtreplay clean
 
 install: replay
 	mkdir -p $(DESTDIR)/mtedit
 	install -m 644 mtedit/*.py $(DESTDIR)/mtedit
-	mkdir -p $(DESTDIR)/mtlib/replay
-	install -m 644 mtlib/*.py $(DESTDIR)/mtlib
-	install mtlib/replay/replay $(DESTDIR)/mtlib/replay
 
-IN_PLACE_DEPS=../libevdev ../gestures mtlib/replay
+	mkdir -p $(DESTDIR)/mtlib
+	install -m 644 mtlib/*.py $(DESTDIR)/mtlib
+
+	mkdir -p $(DESTDIR)/mtreplay
+	install -m 644 mtreplay/*.py $(DESTDIR)/mtreplay
+	install mtreplay/replay $(DESTDIR)/mtreplay/replay
+
+IN_PLACE_DEPS=../libevdev ../gestures mtreplay
 
 setup-in-place:
 	# utouch-evemu is currently required, but will be removed soon.
@@ -46,6 +50,6 @@ clean-in-place:
 
 in-place:
 	# can't use foreach loop here, otherwise make errors will be ignored.
-	make -C ../libevdev in-place
-	make -C ../gestures in-place
-	make -C mtlib/replay in-place
+	OUT=. make -C ../libevdev in-place
+	OUT=. make -C ../gestures in-place
+	OUT=. make -C mtreplay in-place
