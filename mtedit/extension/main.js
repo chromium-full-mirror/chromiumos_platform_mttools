@@ -12,6 +12,60 @@ var logname = undefined;
 var LOG_SCREEN = 'screen';
 var LOG_PAD = 'pad';
 
+function getFeedbackUrl(id, extension) {
+  return 'https://feedback.corp.googleusercontent.com/binarydata/report-' +
+      id + '-system_logs.' + extension + '?id=' + id + '&logIndex=0';
+}
+
+function getScreenshotUrl(id) {
+  return 'https://feedback.corp.googleusercontent.com/screenshot?id=' + id;
+}
+
+function startLoading() {
+  // Do something more visually interesting later.
+  $('#loading').show();
+}
+
+function doneLoading() {
+  $('#loading').hide();
+}
+
+function onHashChange() {
+  if (window.ignoreHashChange) {
+    window.ignoreHashChange = false;
+    return;
+  }
+  var hash = window.location.hash.substr(1);
+  if (hash.length > 0) {
+    var params = hash.split('&');
+    window.args = {};
+    for (var i = 0; i < params.length; i++) {
+      var param = params[i].split('=', 2);
+      args[param[0]] = param.length > 0 ? param[1] : true;
+    }
+    var reportId = args.reportId;
+    var extension = args.extension;
+    if (reportId && extension) {
+      var request = new XMLHttpRequest();
+      request.responseType = 'arraybuffer';
+      startLoading();
+      request.onreadystatechange = function(evt) {
+        if (this.readyState === 4) {
+          if (this.status === 200 && this.response) {
+            loadFileContent(this.response);
+            $('#screenshot').attr('src', getScreenshotUrl(reportId));
+          } else {
+            console.log('Error loading system logs.');
+          }
+          doneLoading();
+        }
+      };
+      request.open('GET', getFeedbackUrl(reportId, extension));
+      request.send();
+    }
+  }
+}
+
 function update_range(event, ui) {
   finger_view_controller.setRange(ui.values[0], ui.values[1]);
   var begin_event = finger_view_controller.getEvent(ui.values[0]);
@@ -466,10 +520,16 @@ function shrink() {
   }
 }
 
+function setTextBoxAndSelect(text) {
+  $('#text_box').val(text);
+  $('#text_box')[0].focus();
+  $('#text_box')[0].select();
+}
+
 function exportRange() {
   var values = $('#slider').slider('option', 'values');
   var snippet = finger_view_controller.getSnippet(values[0], values[1]);
-  $('#text_box').val(convertEntriesToEventStream(snippet));
+  setTextBoxAndSelect(convertEntriesToEventStream(snippet));
 }
 
 function generateRadioButtons(obj) {
@@ -680,6 +740,28 @@ function extractAndLoadLog(log) {
   }
 }
 
+/**
+ * Loads from a buffer, either from uploaded file or from feedback report urls.
+ * @param {ArrayBuffer} buffer Contains the entire file's contents.
+ */
+function loadFileContent(buffer) {
+  var feedback = '';
+  var dataArray = new Uint8Array(buffer);
+  var unzipper = new JSUnzip({
+    'charCodeAt': function(index) {
+      return dataArray[index];
+    },
+  });
+  // If the file is not a valid zip file, assume it is bzip2.
+  if (unzipper.isZipFile()) {
+    unzipper.readEntries();
+    feedback = JSInflate.inflate(unzipper.entries[0].data);
+  } else {
+    feedback = bzip2.simple(bzip2.array(dataArray));
+  }
+  extractAndLoadLog(feedback);
+}
+
 $(document).ready(function() {
   setup();
   $('#playpause').button({
@@ -799,35 +881,29 @@ $(document).ready(function() {
   $('#upload').change(function () {
     // read selected file
     reader = new FileReader();
+    startLoading();
     reader.onload = function (event) {
-      var feedback = '';
-      var dataArray = new Uint8Array(event.target.result);
-      var unzipper = new JSUnzip({
-        'charCodeAt': function(index) {
-          return dataArray[index];
-        },
-      });
-      // If the file is not a valid zip file, assume it is bzip2.
-      if (unzipper.isZipFile()) {
-        unzipper.readEntries();
-        feedback = JSInflate.inflate(unzipper.entries[0].data);
-      } else {
-        feedback = bzip2.simple(bzip2.array(dataArray));
-      }
-      extractAndLoadLog(feedback);
+      loadFileContent(event.target.result);
+      doneLoading();
     };
     reader.readAsArrayBuffer(document.getElementById('upload').files[0]);
   });
 
-  logname = $.url().fparam('id');
-  use_server = logname !== '';
-
-  if (use_server) {
-    $.get('/load/' + logname, function(data) {
-      loadLog(convertStrToLog(data));
-    }, 'text');
-  } else {
-    loadLog(secret_obj);
+  // The jQuery hashchange event is bound to the window.onhashchange event. This
+  // event is fired whenever the part of the url following the # symbol is
+  // changed.
+  $(window).bind('hashchange', onHashChange);
+  onHashChange();
+  // Loading feedback report from url takes precedence
+  if (args.reportId === undefined) {
+    logname = $.url().fparam('id');
+    use_server = logname !== '';
+    if (use_server) {
+      $.get('/load/' + logname, function(data) {
+        loadLog(convertStrToLog(data));
+      }, 'text');
+    } else {
+      loadLog(secret_obj);
+    }
   }
 });
-
