@@ -3,11 +3,10 @@
 # found in the LICENSE file.
 
 from gzip import GzipFile
+from mtlib.feedback import FeedbackDownloader
 from StringIO import StringIO
 import base64
 import bz2
-import cookielib
-import getpass
 import imghdr
 import os
 import os.path
@@ -16,16 +15,8 @@ import subprocess
 import sys
 import tarfile
 import tempfile
-import urllib2
 import zipfile
 
-# path to current script directory
-script_dir = os.path.dirname(os.path.realpath(__file__))
-
-# path to the cookies file used for storing the login cookies.
-cookies_file = os.path.join(script_dir, "mtedit.cookies")
-
-log_cache_dir = os.path.join(script_dir, "reports")
 
 # path for temporary screenshot
 screenshot_filepath = "extension/screenshot.jpg"
@@ -87,68 +78,6 @@ class FileLog(AbstractLog):
       self.image = open(filename + ".jpg").read()
       file(screenshot_filepath, "w").write(self.image)
 
-class FeedbackDownloader():
-  def __init__(self):
-    # setup cookies file and url opener
-    self.cookies = cookielib.MozillaCookieJar(cookies_file)
-    if os.path.exists(cookies_file):
-      self.cookies.load()
-    cookie_processor = urllib2.HTTPCookieProcessor(self.cookies)
-    self.opener = urllib2.build_opener(cookie_processor)
-    self._Login()
-
-  def _Login(self):
-    username = getpass.getuser()
-
-    # check if already logged in
-    url = "https://login.corp.google.com/"
-    data = self.opener.open(url).read()
-    if username in data:
-      return
-
-    # ask for credentials
-    print "Login to corp.google.com:"
-    password = getpass.getpass()
-    sys.stdout.write("OTP: ")
-    otp = sys.stdin.readline().strip()
-
-    # execute login by posting userdata to login.corp.google.com
-    url = "https://login.corp.google.com/login?ssoformat=CORP_SSO"
-    data = "u=%s&pw=%s&otp=%s" % (username, password, otp)
-    result = self.opener.open(url, data).read()
-
-    # check if the result displays error
-    if result.find("error") >= 0:
-      print "Login failed"
-      exit(-1)
-
-    # login was successful. save cookies to file to be reused later.
-    self.cookies.save()
-
-  def DownloadFile(self, url):
-    try:
-      return self.opener.open(url).read()
-    except urllib2.URLError:
-      return None
-
-  def DownloadSystemLog(self, id):
-    # First download the report.zip file
-    logfile = "report-%s-system_logs.zip" % id
-    url = ("https://feedback.corp.googleusercontent.com/binarydata/" +
-           "%s?id=%s&logIndex=0") % (logfile, id)
-    report = self.DownloadFile(url)
-    if not report or (report[0:2] != "BZ" and report[0:2] != "PK"):
-      print "Report does not include log files at %s" % url
-      return None
-    return report
-
-  def DownloadScreenshot(self, id):
-    url = "https://feedback.corp.googleusercontent.com/screenshot?id=%s" % id
-    image = self.DownloadFile(url)
-    if not image or imghdr.what("", image) != 'jpeg':
-      print "No screenshots available at %s" % url
-      return None
-    return image
 
 class FeedbackLog(AbstractLog):
   """
@@ -169,25 +98,11 @@ class FeedbackLog(AbstractLog):
         pass
     else:
       self.downloader = FeedbackDownloader()
-      def GetAndUpdateCachedFile(cached_filename, downloader):
-        try:
-          return open(cached_filename).read()
-        except IOError:
-          data = downloader(id_or_filename)
-          # Cache the data on disk
-          if not os.path.exists(log_cache_dir):
-            os.makedirs(log_cache_dir)
-          file(cached_filename, "w").write(data)
-          return data
-      self.report = GetAndUpdateCachedFile(
-          os.path.join(log_cache_dir, id_or_filename + ".zip"),
-          self.downloader.DownloadSystemLog)
+      self.report = self.downloader.DownloadSystemLog(id_or_filename)
       self._ExtractSystemLog()
       self._ExtractLogFiles()
       if self.try_screenshot:
-        self.image = GetAndUpdateCachedFile(
-            os.path.join(log_cache_dir, id_or_filename + ".jpg"),
-            self.downloader.DownloadScreenshot)
+        self.image = self.downloader.DownloadScreenshot(id_or_filename)
 
     # Only write to screenshot.jpg if we will be viewing the screenshot
     if options and not options.download and self.image:
