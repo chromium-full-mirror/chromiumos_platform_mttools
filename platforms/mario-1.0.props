@@ -1,0 +1,18 @@
+{
+	"gestures": {
+		"SemiMT Non Linear Area Left": 1217,
+		"SemiMT Non Linear Area Right": 5733,
+		"SemiMT Non Linear Area Top": 1061,
+		"SemiMT Non Linear Area Bottom": 4798
+	},
+	"xorg": {
+		"file": "50-touchpad-cmt-mario.conf",
+		"identifiers": ["touchpad mario"]
+	},
+	"ignore": [
+		"Active Area Left",
+		"Active Area Right",
+		"Active Area Top",
+		"Active Area Bottom"
+	]
+}

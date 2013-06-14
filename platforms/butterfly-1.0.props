@@ -1,0 +1,12 @@
+{
+	"gestures": {
+		"Pressure Calibration Offset": -4.09267447213274,
+		"Pressure Calibration Slope": 4.16407967978032,
+		"Sensor Jump Filter Enable": 1,
+		"Sensor Jump Min Dist Move": 0.6
+	},
+	"xorg": {
+		"file": "50-touchpad-cmt-butterfly.conf",
+		"identifiers": ["touchpad butterfly", "touchpad butterfly cyapa"]
+	}
+}

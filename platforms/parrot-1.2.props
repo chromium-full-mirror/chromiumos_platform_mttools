@@ -1,0 +1,8 @@
+{
+	"gestures": {
+	},
+	"xorg": {
+		"file": "50-touchpad-cmt-parrot.conf",
+		"identifiers": ["touchpad parrot", "touchpad parrot cyapa"]
+	}
+}

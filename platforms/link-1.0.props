@@ -1,0 +1,12 @@
+{
+	"gestures": {
+		"Point X Out Scale": 2.0,
+		"Point Y Out Scale": 2.0,
+		"Scroll X Out Scale": 0.5,
+		"Scroll Y Out Scale": 0.5
+	},
+	"xorg": {
+		"file": "50-touchpad-cmt-link.conf",
+		"identifiers": ["touchpad link", "touchpad link atmel"]
+	}
+}

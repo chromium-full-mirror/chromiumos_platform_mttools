@@ -1,0 +1,8 @@
+{
+	"gestures": {
+	},
+	"xorg": {
+		"file": "50-touchpad-cmt-daisy.conf",
+		"identifiers": ["touchpad daisy", "touchpad daisy_spring atmel"]
+	}
+}
