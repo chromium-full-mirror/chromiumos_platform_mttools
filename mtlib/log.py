@@ -19,20 +19,21 @@ import zipfile
 
 
 # path for temporary screenshot
-screenshot_filepath = "extension/screenshot.jpg"
+screenshot_filepath = 'extension/screenshot.jpg'
 
 def Log(source, options):
-  """
-    Returns a log object containg activity, evdev and system logs.
-    source can be either an ip address to a device from which to
-    download, a url pointing to a feedback report to pull or a filename.
+  """ Load log from feedback url, device ip or local file path.
+
+  Returns a log object containg activity, evdev and system logs.
+  source can be either an ip address to a device from which to
+  download, a url pointing to a feedback report to pull or a filename.
   """
   if os.path.exists(source):
-    if source.endswith(".zip") or source.endswith(".bz2"):
+    if source.endswith('.zip') or source.endswith('.bz2'):
       return FeedbackLog(source, options)
     return FileLog(source, options)
   else:
-    match = re.search("Report/([0-9]+)", source)
+    match = re.search('Report/([0-9]+)', source)
     if match:
       return FeedbackLog(match.group(1), options)
     else:
@@ -41,18 +42,19 @@ def Log(source, options):
 
 
 class AbstractLog(object):
-  """
-    A log file consists of the activity log, the evdev log, a system log, and
-    possibly a screenshot, which can be saved to disk all together.
+  """ Common functions for log files
+
+  A log file consists of the activity log, the evdev log, a system log, and
+  possibly a screenshot, which can be saved to disk all together.
   """
   def SaveAs(self, filename):
-    open(filename, "w").write(self.activity)
+    open(filename, 'w').write(self.activity)
     if self.evdev:
-      open(filename + ".evdev", "w").write(self.evdev)
+      open(filename + '.evdev', 'w').write(self.evdev)
     if self.system:
-      open(filename + ".system", "w").write(self.system)
+      open(filename + '.system', 'w').write(self.system)
     if self.image:
-      open(filename + ".jpg", "w").write(self.image)
+      open(filename + '.jpg', 'w').write(self.image)
 
   def CleanUp(self):
     if os.path.exists(screenshot_filepath):
@@ -60,35 +62,37 @@ class AbstractLog(object):
 
 
 class FileLog(AbstractLog):
-  """
-    Loads log from file. Does not contain evdev or system logs.
+  """ Loads log from file.
+
+  evdev or system logs are optional.
   """
   def __init__(self, filename, options):
     self.activity = open(filename).read()
-    self.evdev = ""
-    self.system = ""
+    self.evdev = ''
+    self.system = ''
     self.image = None
     if options.evdev:
       self.evdev = open(options.evdev).read()
-    elif os.path.exists(filename + ".evdev"):
-      self.evdev = open(filename + ".evdev").read()
-    if os.path.exists(filename + ".system"):
-      self.system = open(filename + ".system").read()
-    if os.path.exists(filename + ".jpg"):
-      self.image = open(filename + ".jpg").read()
-      file(screenshot_filepath, "w").write(self.image)
+    elif os.path.exists(filename + '.evdev'):
+      self.evdev = open(filename + '.evdev').read()
+    if os.path.exists(filename + '.system'):
+      self.system = open(filename + '.system').read()
+    if os.path.exists(filename + '.jpg'):
+      self.image = open(filename + '.jpg').read()
+      file(screenshot_filepath, 'w').write(self.image)
 
 
 class FeedbackLog(AbstractLog):
-  """
-    Downloads logs and (possibly) screenshot from a feedback id or file name
+  """ Download log from feedback url.
+
+  Downloads logs and (possibly) screenshot from a feedback id or file name
   """
   def __init__(self, id_or_filename, options=None, force_latest=None):
     self.image = None
     self.force_latest = force_latest
     self.try_screenshot = options and options.screenshot
 
-    if id_or_filename.endswith(".zip") or id_or_filename.endswith(".bz2"):
+    if id_or_filename.endswith('.zip') or id_or_filename.endswith('.bz2'):
       self.report = open(id_or_filename).read()
       screenshot_filename = id_or_filename[:-4] + '.jpg'
       try:
@@ -106,7 +110,7 @@ class FeedbackLog(AbstractLog):
 
     # Only write to screenshot.jpg if we will be viewing the screenshot
     if options and not options.download and self.image:
-      file(screenshot_filepath, "w").write(self.image)
+      file(screenshot_filepath, 'w').write(self.image)
 
 
   def _GetLatestFile(self, match, tar):
@@ -114,22 +118,22 @@ class FeedbackLog(AbstractLog):
     names = filter(lambda n: n.find(match) >= 0, tar.getnames())
     names.sort()
     if not names:
-      print "Cannot find files named %s in tar file" % match
-      print "Tar file contents:", tar.getnames()
+      print 'Cannot find files named %s in tar file' % match
+      print 'Tar file contents:', tar.getnames()
       sys.exit(-1)
     return tar.extractfile(names[-1])
 
 
   def _ExtractSystemLog(self):
-    if self.report[0:2] == "BZ":
+    if self.report[0:2] == 'BZ':
       self.system = bz2.decompress(self.report)
-    elif self.report[0:2] == "PK":
+    elif self.report[0:2] == 'PK':
       io = StringIO(self.report)
-      zip = zipfile.ZipFile(io, "r")
+      zip = zipfile.ZipFile(io, 'r')
       self.system = zip.read(zip.namelist()[0])
-      zip.extractall("./")
+      zip.extractall('./')
     else:
-      print "Cannot download logs file"
+      print 'Cannot download logs file'
       sys.exit(-1)
 
   def _ExtractLogFiles(self):
@@ -139,16 +143,16 @@ class FeedbackLog(AbstractLog):
       assert interface == 'pad' or interface == 'screen'
 
       log_index = [
-        (("hack-33025-touch{0}_activity=\"\"\"\n" +
-          "begin-base64 644 touch{0}_activity_log.tar\n").format(interface),
-         '"""'),
-        (("touch{0}_activity=\"\"\"\n" +
-          "begin-base64 644 touch{0}_activity_log.tar\n").format(interface),
-         '"""'),
-        (("hack-33025-touch{0}_activity=<multiline>\n" +
-          "---------- START ----------\n" +
-          "begin-base64 644 touch{0}_activity_log.tar\n").format(interface),
-         "---------- END ----------"),
+        (('hack-33025-touch{0}_activity=\'\'\'\n' +
+          'begin-base64 644 touch{0}_activity_log.tar\n').format(interface),
+          '"""'),
+        (('touch{0}_activity=\'\'\'\n' +
+          'begin-base64 644 touch{0}_activity_log.tar\n').format(interface),
+          '"""'),
+        (('hack-33025-touch{0}_activity=<multiline>\n' +
+          '---------- START ----------\n' +
+          'begin-base64 644 touch{0}_activity_log.tar\n').format(interface),
+          '---------- END ----------'),
       ]
 
       start_index = end_index = None
@@ -172,7 +176,7 @@ class FeedbackLog(AbstractLog):
       def ExtractPadFiles(name):
         # find matching evdev file
         evdev_name = name[0:name.index('touchpad_activity')]
-        evdev_name = evdev_name + "cmt_input_events"
+        evdev_name = evdev_name + 'cmt_input_events'
 
         for file_name in activity_tar_file.getnames():
           if file_name.startswith(evdev_name):
@@ -203,38 +207,38 @@ class FeedbackLog(AbstractLog):
           for filename in activity_tar_file.getnames()
               if filename.find('cmt') == -1]
 
-    if self.force_latest == "pad":
+    if self.force_latest == 'pad':
       logs = ExtractByInterface('pad')
       idx = 0
-    elif self.force_latest == "screen":
+    elif self.force_latest == 'screen':
       logs = ExtractByInterface('screen')
       idx = 0
     else:
       logs = ExtractByInterface('pad') + ExtractByInterface('screen')
       if not logs:
-        print ("Cannot find touchpad_activity_log.tar or " +
-            "touchscreen_activity_log.tar in systems log file.")
+        print ('Cannot find touchpad_activity_log.tar or ' +
+            'touchscreen_activity_log.tar in systems log file.')
         sys.exit(-1)
 
       if len(logs) == 1:
         idx = 0
       else:
         while True:
-          print "Which log file would you like to use?"
+          print 'Which log file would you like to use?'
           for i, (name, extract_func) in enumerate(logs):
             if name.startswith('evdev'):
               name = 'touchscreen log - ' + name
             print i, name
-          print ">"
+          print '>'
           selection = sys.stdin.readline()
           try:
             idx = int(selection)
             if idx < 0 or idx >= len(logs):
-              print "Number out of range"
+              print 'Number out of range'
             else:
               break
           except:
-            print "Not a number"
+            print 'Not a number'
 
     name, extract_func = logs[idx]
     self.activity, self.evdev = extract_func(name)
@@ -248,31 +252,29 @@ $ %s
 Yes/No? (Default: No)"""
 
 class DeviceLog(AbstractLog):
-  """
-    Downloads logs from a running chromebook via scp.
-  """
+  """ Downloads logs from a running chromebook via scp. """
   def __init__(self, ip, options):
-    self.id_path = os.path.expanduser("~/.ssh/identity")
+    self.id_path = os.path.expanduser('~/.ssh/identity')
     if not os.path.exists(self.id_path):
       self._SetupIdentity()
 
     if options.new:
       self._GenerateLogs(ip)
 
-    self.activity = self._Download(ip, "touchpad_activity_log.txt")
-    self.evdev = self._Download(ip, "cmt_input_events.dat")
-    self.system = ""
+    self.activity = self._Download(ip, 'touchpad_activity_log.txt')
+    self.evdev = self._Download(ip, 'cmt_input_events.dat')
+    self.system = ''
 
   def _GenerateLogs(self, ip):
-    cmd = ("ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no " +
-           "-q root@%s /opt/google/touchpad/tpcontrol log") % ip
+    cmd = ('ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ' +
+           '-q root@%s /opt/google/touchpad/tpcontrol log') % ip
     process = subprocess.Popen(cmd.split())
     process.wait()
 
   def _Download(self, ip, filename):
-    temp = tempfile.NamedTemporaryFile("r")
-    cmd = ("scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no " +
-           "-q root@%s:/var/log/%s %s")
+    temp = tempfile.NamedTemporaryFile('r')
+    cmd = ('scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ' +
+           '-q root@%s:/var/log/%s %s')
     cmd = cmd % (ip, filename, temp.name)
     process = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
     process.wait()
@@ -280,10 +282,10 @@ class DeviceLog(AbstractLog):
     return temp.read()
 
   def _SetupIdentity(self):
-    source = os.path.expanduser("~/trunk/chromite/ssh_keys/testing_rsa")
-    command = "cp %s %s && chmod 600 %s" % (source, self.id_path, self.id_path)
+    source = os.path.expanduser('~/trunk/chromite/ssh_keys/testing_rsa')
+    command = 'cp %s %s && chmod 600 %s' % (source, self.id_path, self.id_path)
     print identity_message % command
     response = sys.stdin.readline().strip()
-    if response in ("Yes", "yes", "Y", "y"):
+    if response in ('Yes', 'yes', 'Y', 'y'):
       print command
       os.system(command)

@@ -25,9 +25,9 @@ class ServerData(object):
     self.saved = False
     self.result = None
 
-class TPViewHTTPRequestHandler(SimpleHTTPRequestHandler):
-  """
-    serves static files and provides three dynamic URLs:
+class MTEditHTTPRequestHandler(SimpleHTTPRequestHandler):
+  """ Serves static files and dynamic pages for log file handling.
+
     /edit serving view.html
     /load/* serving the log file provided when starting the server
     /save/* for POST'ing trimmed log files
@@ -35,37 +35,38 @@ class TPViewHTTPRequestHandler(SimpleHTTPRequestHandler):
     The latter two are only to be used with AJAX commands from
     /edit
   """
-  def respond(self, data, type="text/html"):
+  def respond(self, data, type='text/html'):
       # send text response to browser
       self.send_response(200)
-      self.send_header("Content-type", type)
+      self.send_header('Content-type', type)
       self.end_headers()
       self.wfile.write(data)
 
   def do_GET(self):
     data = self.server.user_data
 
-    if self.path.startswith("/load/"):
-      self.respond(data.log, "text/plain")
+    if self.path.startswith('/load/'):
+      self.respond(data.log, 'text/plain')
       data.loaded = True
     else:
-      if self.path.startswith("/edit"):
-        self.path = "mtedit.html"
+      if self.path.startswith('/edit'):
+        self.path = 'mtedit.html'
       self.path = 'extension/' + self.path
       SimpleHTTPRequestHandler.do_GET(self)
 
   def do_POST(self):
     data = self.server.user_data
 
-    if self.path.startswith("/save/"):
+    if self.path.startswith('/save/'):
       name = os.path.basename(self.path)
       length = int(self.headers.getheader('content-length'))
       data.result = self.rfile.read(length)
       data.saved = True
-      self.respond("Success")
+      self.respond('Success')
 
   def translate_path(self, path):
-    """
+    """ Translate url path to local path.
+
       Modified version of translate_path to use script_dir
       for looking up files instead of the local working dir.
     """
@@ -75,12 +76,13 @@ class TPViewHTTPRequestHandler(SimpleHTTPRequestHandler):
     return path
 
 def View(port, log=None, persistent=False):
-  """
-    Serve TPView viewing 'log'. The server will exit after serving TPView
+  """ Serve MTEdit viewing 'log'.
+
+    The server will exit after serving MTEdit
     unless persistent is set to True.
   """
   data = ServerData(log)
-  httpd = SocketServer.TCPServer(("", port), TPViewHTTPRequestHandler)
+  httpd = SocketServer.TCPServer(('', port), MTEditHTTPRequestHandler)
   httpd.user_data = data
 
   while True:
@@ -90,12 +92,13 @@ def View(port, log=None, persistent=False):
 
 
 def Edit(port, log=None):
-  """
-    Serve TPView for editing 'log'. Blocks until the file has been trimmed
+  """ Serve MTEdit for editing 'log'.
+
+    Blocks until the file has been trimmed
     and returns the trimmed log.
   """
   data = ServerData(log)
-  httpd = SocketServer.TCPServer(("", port), TPViewHTTPRequestHandler)
+  httpd = SocketServer.TCPServer(('', port), MTEditHTTPRequestHandler)
   httpd.user_data = data
 
   while True:
@@ -105,12 +108,13 @@ def Edit(port, log=None):
 
 
 def Serve(port):
-  """
-    Serve TPView without any log data. The server will serve until killed
+  """ Serve MTEdit without any log data.
+
+    The server will serve until killed
     externally (e.g. via keyboard interrupt).
   """
-  data = ServerData("")
-  httpd = SocketServer.TCPServer(("", port), TPViewHTTPRequestHandler)
+  data = ServerData('')
+  httpd = SocketServer.TCPServer(('', port), MTEditHTTPRequestHandler)
   httpd.user_data = data
   while True:
     httpd.handle_request()

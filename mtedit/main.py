@@ -25,30 +25,30 @@ $ %prog log -d -o output.log"""
 
 def main(argv):
   parser = OptionParser(usage=usage)
-  parser.add_option("-o",
-                    dest="out", default=None,
-                    help="set target filename for storing results",
-                    metavar="output.log")
-  parser.add_option("-d", "--download",
-                    dest="download", action="store_true", default=False,
-                    help="download file only, don't edit.")
-  parser.add_option("-e", "--evdev",
-                    dest="evdev", default=None,
-                    help="path to local evdev log file")
-  parser.add_option("-n", "--new",
-                    dest="new", action="store_true", default=False,
-                    help="Create new device logs before downloading. "+
-                         "[Default: False]")
-  parser.add_option("-p", "--persistent",
-                    dest="persistent", action="store_true", default=False,
-                    help="Keep server alive until killed in the terminal "+
-                         "via CTRL-C [Default: False]")
-  parser.add_option("-s", "--serve",
-                    dest="serve", action="store_true", default=False,
-                    help="Serve a standalone MTEdit.")
-  parser.add_option("-c", "--screenshot",
-                    dest="screenshot", action="store_true", default=False,
-                    help="Force an attempt to find and download a screenshot.")
+  parser.add_option('-o',
+                    dest='out', default=None,
+                    help='set target filename for storing results',
+                    metavar='output.log')
+  parser.add_option('-d', '--download',
+                    dest='download', action='store_true', default=False,
+                    help='download file only, don\'t edit.')
+  parser.add_option('-e', '--evdev',
+                    dest='evdev', default=None,
+                    help='path to local evdev log file')
+  parser.add_option('-n', '--new',
+                    dest='new', action='store_true', default=False,
+                    help='Create new device logs before downloading. '+
+                         '[Default: False]')
+  parser.add_option('-p', '--persistent',
+                    dest='persistent', action='store_true', default=False,
+                    help='Keep server alive until killed in the terminal '+
+                         'via CTRL-C [Default: False]')
+  parser.add_option('-s', '--serve',
+                    dest='serve', action='store_true', default=False,
+                    help='Serve a standalone MTEdit.')
+  parser.add_option('-c', '--screenshot',
+                    dest='screenshot', action='store_true', default=False,
+                    help='Force an attempt to find and download a screenshot.')
   (options, args) = parser.parse_args()
 
   editor = MTEdit(persistent=options.persistent)
@@ -65,7 +65,7 @@ def main(argv):
 
   if options.download:
     if not options.out:
-      print "--download requires -o to be set."
+      print '--download requires -o to be set.'
       exit(-1)
     log.SaveAs(options.out)
   else:
@@ -78,5 +78,5 @@ def main(argv):
   log.CleanUp()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
   main(sys.argv)

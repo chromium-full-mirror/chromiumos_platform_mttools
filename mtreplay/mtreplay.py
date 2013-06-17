@@ -10,37 +10,35 @@ from tempfile import NamedTemporaryFile
 import os
 
 def _GetAbsPath(path):
-  """
-    Helper method to return the normalized path of a path
-    relative to this script file
-  """
+  """ Return normalized path relative to this script """
   path = os.path.join(os.path.dirname(__file__), path)
   return os.path.normpath(path)
 
 
 class MTReplay(object):
-  """
-  This class provides a high level interface to invoke a replay tool process.
+  """ High level interface to replay tool.
+
   It provides access to both the replay and the trim feature.
   """
 
   # default path for executable
   _default_executable_path = os.path.join(os.path.dirname(__file__),
-                                          "replay")
+                                          'replay')
 
   def __init__(self, platform_file, device_class=None,
                path_to_exe=_default_executable_path):
-    """
-    Create a new instance of the replay tool. The platform_file has to
-    point to a file that contains the simulated's device data.
+    """ Create a new instance of the replay tool.
+
+    The platform_file has to point to a file that contains the
+    simulated's device data.
     """
     self._exe = path_to_exe
 
     # setup LD_LIBRARY_PATH for in-place installs
-    libevdev_path = _GetAbsPath("../../libevdev/in-place")
-    gestures_path = _GetAbsPath("../../gestures/in-place")
+    libevdev_path = _GetAbsPath('../../libevdev/in-place')
+    gestures_path = _GetAbsPath('../../gestures/in-place')
     self._env = os.environ.copy()
-    self._env["LD_LIBRARY_PATH"] = "%s;%s" % (libevdev_path, gestures_path)
+    self._env['LD_LIBRARY_PATH'] = '%s;%s' % (libevdev_path, gestures_path)
 
     self._platform_file = platform_file
     self._device_class = device_class
@@ -50,16 +48,17 @@ class MTReplay(object):
 
   def Trim(self, events_file, trim_out, trim_from=None, trim_to=None,
            gdb_mode=False):
-    """
-    Shorthand for _execute. Stores trimed version of events_file
-    in trim_out.
+    """ Shorthand for _execute for trimming.
+
+    Stores trimed version of events_file in trim_out.
     """
     self._Execute(events_file, None, False, False, False,
            trim_out, trim_from, trim_to, gdb_mode=gdb_mode)
 
   def Replay(self, events_file, properties=None, debug=False, gdb_mode=False):
-    """
-    Shorthand for _execute. debug=True/False enables or disables extra logs.
+    """ Shorthand for _execute for replaying.
+
+    debug=True/False enables or disables extra logs.
     This method always returns the activity log as a string.
     """
     self._Execute(events_file, properties, debug, debug, True,
@@ -69,8 +68,9 @@ class MTReplay(object):
   def _Execute(self, events_file, properties=None,
          log_evdev=True, log_gestures=True, log_activity=True,
          trim_out=None, trim_from=None, trim_to=None, gdb_mode=False):
-    """
-    executes a replay process. The method arguments are translated to
+    """ Executes a replay process.
+
+    The method arguments are translated to
     command line arguments for the process.
     This method throws an exception if the replay process returns and error.
 
@@ -91,42 +91,42 @@ class MTReplay(object):
 
     # translate arguments to command line parameters
     parameters = [self._exe]
-    parameters.extend(["--device", self._platform_file ])
-    parameters.extend(["--events", events_file])
+    parameters.extend(['--device', self._platform_file ])
+    parameters.extend(['--events', events_file])
 
     if self._device_class:
-      parameters.extend(["--class", self._device_class])
+      parameters.extend(['--class', self._device_class])
 
     if log_evdev:
-      evdev_log_file = NamedTemporaryFile("r", delete=True)
-      parameters.extend(["--evdev-log", evdev_log_file.name])
+      evdev_log_file = NamedTemporaryFile('r', delete=True)
+      parameters.extend(['--evdev-log', evdev_log_file.name])
 
     if log_gestures:
-      gestures_log_file = NamedTemporaryFile("r", delete=True)
-      parameters.extend(["--gestures-log", gestures_log_file.name])
+      gestures_log_file = NamedTemporaryFile('r', delete=True)
+      parameters.extend(['--gestures-log', gestures_log_file.name])
 
     if log_activity:
-      activity_log_file = NamedTemporaryFile("r", delete=True)
-      parameters.extend(["--activity-log", activity_log_file.name])
+      activity_log_file = NamedTemporaryFile('r', delete=True)
+      parameters.extend(['--activity-log', activity_log_file.name])
 
     if properties:
-      properties_file = NamedTemporaryFile("w", delete=True)
+      properties_file = NamedTemporaryFile('w', delete=True)
       properties_file.write(properties)
       properties_file.flush()
-      parameters.extend(["--properties", properties_file.name])
+      parameters.extend(['--properties', properties_file.name])
 
     if trim_out:
-      parameters.extend(["--trim-out", trim_out])
+      parameters.extend(['--trim-out', trim_out])
 
     if trim_from:
-      parameters.extend(["--trim-from", str(trim_from)])
+      parameters.extend(['--trim-from', str(trim_from)])
 
     if trim_to:
-      parameters.extend(["--trim-to", str(trim_to)])
+      parameters.extend(['--trim-to', str(trim_to)])
 
     # execute
     if gdb_mode:
-      parameters = ["gdb", "--args"] + parameters
+      parameters = ['gdb', '--args'] + parameters
 
     process = Popen(parameters, env=self._env, cwd=working_dir)
     process.wait()
@@ -148,6 +148,6 @@ class MTReplay(object):
       properties_file.close()
 
     if process.returncode != 0:
-      print "Gestures Log: "
+      print 'Gestures Log: '
       print self.gestures_log
-      raise Exception("Process error: ", " ".join(parameters))
+      raise Exception('Process error: ', ' '.join(parameters))
