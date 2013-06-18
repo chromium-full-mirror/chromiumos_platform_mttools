@@ -1,29 +1,127 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-#
-# This module provides an interface to the replay tool.
+from mtedit import MTEdit
+from mtlib.gesture_log import GestureLog
+from mtlib.log import Log
+from mtlib.platform import PlatformDatabase
 from subprocess import Popen
-from threading import Thread
 from tempfile import NamedTemporaryFile
-
+from threading import Thread
+import decimal
+import json
 import os
+import sys
 
 def _GetAbsPath(path):
   """ Return normalized path relative to this script """
   path = os.path.join(os.path.dirname(__file__), path)
-  return os.path.normpath(path)
+  return os.path.abspath(path)
+
+class ReplayResults(object):
+  def __init__(self, replay):
+    self.gestures_log = replay.gestures_log
+    self.evdev_log = replay.evdev_log
+    self.log = Log(activity=replay.activity_log)
+    self.gestures = GestureLog(replay.activity_log)
+
+  def View(self, what):
+    if what == None:
+      what = 'activity-log'
+    elif what == 'g':
+      what = 'gestures'
+    elif what == 'gl':
+      what = 'gestures-log'
+    elif what == 'el':
+      what = 'evdev-log'
+    elif what == 'al':
+      what = 'activity-log'
+    elif what == 'a':
+      what = 'activity'
+    elif what == 'e':
+      what = 'events'
+
+    if what == 'gestures-log':
+      print self.gestures_log
+    elif what == 'evdev-log':
+      print self.evdev_log
+    elif what == 'activity-log':
+      print self.log.activity
+    elif what == 'activity':
+      MTEdit().View(self.log)
+    elif what == 'gestures':
+      for gesture in self.gestures.gestures:
+        print gesture
+    elif what == 'events':
+      for event in self.gestures.events:
+        print event
 
 
 class MTReplay(object):
+  """ New API for replaying log files """
+  def __init__(self):
+    self.database = PlatformDatabase()
+
+  def PlatformOf(self, log):
+    return self.database.FindMatching(log)
+
+  def Replay(self, log, override_properties=None, force_platform=None,
+             gdb=False):
+    if force_platform:
+      platform = self.database.platforms[force_platform]
+    else:
+      platform = self.PlatformOf(log)
+    replay = RawReplay(platform.hwprops_file, platform.device_class)
+
+    events = NamedTemporaryFile('w', delete=True)
+    events.write(log.evdev)
+    events.flush()
+
+    properties = {}
+    properties.update(platform.properties)
+    if override_properties:
+      properties.update(override_properties)
+
+    replay.Replay(events.name, json.dumps(properties),
+                  debug=True, gdb_mode=gdb)
+    return ReplayResults(replay)
+
+  def TrimEvdev(self, log, gdb=False):
+    """ Trim evdev log to cover same range as activity log. """
+    platform = self.PlatformOf(log)
+    replay = RawReplay(platform.hwprops_file, platform.device_class)
+
+    # parse activity_log
+    decimal.setcontext(decimal.Context(prec=8))
+    activity = json.loads(log.activity, parse_float=decimal.Decimal)
+
+    # extract from/to times from activity log
+    hwstates = filter(lambda e: e["type"] == "hardwareState",
+                      activity["entries"])
+    trim_from = hwstates[0]["timestamp"]
+    trim_to = hwstates[-1]["timestamp"]
+
+    events = NamedTemporaryFile('w', delete=True)
+    events.write(log.evdev)
+    events.flush()
+
+    trim_out = NamedTemporaryFile('r', delete=True)
+
+    replay.Trim(events.name, trim_out.name,
+                trim_from=trim_from, trim_to=trim_to,
+                gdb_mode=gdb)
+    log.evdev = trim_out.read()
+    return log
+
+
+class RawReplay(object):
   """ High level interface to replay tool.
 
   It provides access to both the replay and the trim feature.
   """
 
   # default path for executable
-  _default_executable_path = os.path.join(os.path.dirname(__file__),
-                                          'replay')
+  _default_executable_path = _GetAbsPath('replay')
 
   def __init__(self, platform_file, device_class=None,
                path_to_exe=_default_executable_path):

@@ -19,7 +19,7 @@ class MTEdit(object):
   Viewing or editing a file means that a URL will be displayed which
   takes the user to a website showing TPView with the provided log data.
   """
-  def __init__(self, persistent):
+  def __init__(self, persistent=False):
     """ Prepare server.
 
     Per default the server is killed after serving
@@ -71,6 +71,11 @@ class MTEdit(object):
     """
     self._PrintTPViewURL()
     log.activity = server.Edit(self.port, log.activity)
+
+    from mtreplay import MTReplay
+    replay = MTReplay()
+    log = replay.TrimEvdev(log)
+
     return log
 
   def Serve(self):

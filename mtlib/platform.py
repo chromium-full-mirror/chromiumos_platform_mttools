@@ -1,11 +1,12 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
 """ This module manages the platform properties in mttools/platforms """
+import json
 import os
 import re
-import json
+import sys
 from xorg_conf import XorgInputClassParser
 
 # path to current script directory
@@ -21,7 +22,10 @@ class PlatformProperties(object):
   the name of the platform. Information will then be read from the
   'platforms_dir' directory.
   """
-  def __init__(self, platform=None, activity_data=None):
+  def __init__(self, platform=None, log=None):
+    self.required_axis = []
+    self.has_axis = []
+    self.device_class = "touchpad"
     if platform:
       basename = os.path.join(platforms_dir, platform)
       self.name = platform
@@ -31,9 +35,11 @@ class PlatformProperties(object):
       self._ParseHWProperties(open(self.hwprops_file).read())
       self._ParseProperties(open(self.props_file).read())
       self._UpdateDimensions()
-    elif activity_data:
+    elif log:
       self.name = ''
-      self._ParseActivityLog(activity_data)
+      self._ParseActivityLog(log.activity)
+      if log.evdev:
+        self._ParseEvdevLog(log.evdev)
 
   def _ParseActivityLog(self, activity_data):
     """ Parse property information from an activity log """
@@ -47,6 +53,15 @@ class PlatformProperties(object):
     self.y_min = int(hwprops['top'])
     self.y_max = int(hwprops['bottom'])
     self.y_res = int(hwprops['yResolution'])
+
+  def _ParseEvdevLog(self, evdev_data):
+    # The format of ABS (0003) reports is:
+    # timestamp 0003 axis value
+    report_regex = re.compile(' 0003 ([0-9a-f]{4}) ([0-9a-f]+)')
+    for match in report_regex.finditer(evdev_data):
+      axis = int(match.group(1), 16)
+      if axis not in self.required_axis:
+        self.required_axis.append(axis)
 
   def _ParseHWProperties(self, data):
     """ Parse x and y dimensions and resolution from hwprops file """
@@ -64,9 +79,14 @@ class PlatformProperties(object):
     self.y_max = int(ymatch.group(2))
     self.y_res = int(ymatch.group(5))
 
+    axis_regex = re.compile('A: ([0-9a-f]+)')
+    for match in axis_regex.finditer(data):
+      self.has_axis.append(int(match.group(1), 16))
+
   def _ParseProperties(self, data):
     """ Parse properties from file and inject xorg properties. """
     self.properties = {}
+    self.ignore_properties = []
     data = json.loads(data)
 
     if 'gestures' in data:
@@ -74,6 +94,9 @@ class PlatformProperties(object):
 
     if 'device_class' in data:
       self.device_class = data['device_class']
+
+    if 'ignore' in data:
+      self.ignore_properties.extend(data['ignore'])
 
     if xorg_conf_path and 'xorg' in data and 'file' in data['xorg']:
       filename = os.path.join(xorg_conf_path, data['xorg']['file'])
@@ -85,6 +108,10 @@ class PlatformProperties(object):
         for identifier in data['xorg']['identifiers']:
           properties = input_classes[identifier]
           self.properties.update(properties)
+
+    for prop in self.ignore_properties:
+      if prop in self.properties:
+        del self.properties[prop]
 
   def _UpdateDimensions(self):
     """ Update x/y min/max with xorg properties.
@@ -105,7 +132,7 @@ class PlatformProperties(object):
     if 'Vertical Resolution' in self.properties:
       self.y_res = int(self.properties['Vertical Resolution'])
 
-  def Match(self, other):
+  def Match(self, other, debug=False):
     """ Compare properties and return similarity.
 
     Compare these properties to another PlatformProperties instance.
@@ -118,18 +145,38 @@ class PlatformProperties(object):
     def compare(a, b, what):
       value = abs(float(a) - float(b))
       if value > 0:
-        value = min(1, value / abs(float(a)), abs(float(b)))
+        value = min(1, value / max(abs(float(a)), abs(float(b))))
       scores.append(1-value)
+      if debug:
+        print "%s: %s == %s" % (what, str(a), str(b))
     def compare_attr(what):
       compare(getattr(self, what), getattr(other, what), what)
     def compare_prop(what):
       if what not in self.properties or what not in other.properties:
-        return 0
-      compare(self.properties[what], other.properties[what], what)
+        scores.append(0)
+      else:
+        compare(self.properties[what], other.properties[what], what)
+    def check_axis(required, available):
+      for axis in required:
+        if axis not in available:
+          scores.append(0)
+          return
+
     compare_attr('x_min')
     compare_attr('x_max')
     compare_attr('x_res')
     compare_prop('Pressure Calibration Offset')
+
+    if self.required_axis:
+      if debug:
+        print "axis:", self.required_axis, "in", other.has_axis
+      check_axis(self.required_axis, other.has_axis)
+
+    if other.required_axis:
+      if debug:
+        print "axis:", other.required_axis, "in", self.has_axis
+      check_axis(other.required_axis, self.has_axis)
+
     return reduce(lambda x,y: (x * y), scores)
 
 class PlatformDatabase(object):
@@ -146,7 +193,7 @@ class PlatformDatabase(object):
       name = file.replace('.hwprops', '')
       self.platforms[name] = PlatformProperties(platform=name)
 
-  def FindMatching(self, activity_data):
+  def FindMatching(self, log, debug=False):
     """ Find platform matching activity_data.
 
     Returns the PlatformProperties instance of the platform matching
@@ -154,9 +201,13 @@ class PlatformDatabase(object):
     case no match can be made, or the match is ambiguous.
     """
     result = None
-    properties = PlatformProperties(activity_data=activity_data)
+    properties = PlatformProperties(log=log)
     for name, platform in self.platforms.items():
+      if debug:
+        print "#" * 10, name
       score = platform.Match(properties)
+      if debug:
+        print name, "score =", score
       if score > 0.9:
         if result:
           print ('multiple matching platforms:', result.name,

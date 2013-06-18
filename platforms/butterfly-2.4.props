@@ -1,8 +1,0 @@
-{
-	"gestures": {
-	},
-	"xorg": {
-		"file": "50-touchpad-cmt-butterfly.conf",
-		"identifiers": ["touchpad butterfly", "touchpad butterfly cyapa"]
-	}
-}

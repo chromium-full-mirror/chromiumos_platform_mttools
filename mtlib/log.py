@@ -17,28 +17,42 @@ import tarfile
 import tempfile
 import zipfile
 
-
 # path for temporary screenshot
 screenshot_filepath = 'extension/screenshot.jpg'
 
-def Log(source, options):
+def Log(source=None, options=None, activity=None, evdev=None):
   """ Load log from feedback url, device ip or local file path.
 
   Returns a log object containg activity, evdev and system logs.
   source can be either an ip address to a device from which to
   download, a url pointing to a feedback report to pull or a filename.
   """
-  if os.path.exists(source):
-    if source.endswith('.zip') or source.endswith('.bz2'):
-      return FeedbackLog(source, options)
-    return FileLog(source, options)
-  else:
-    match = re.search('Report/([0-9]+)', source)
-    if match:
-      return FeedbackLog(match.group(1), options)
+  if source:
+    if os.path.exists(source):
+      if source.endswith('.zip') or source.endswith('.bz2'):
+        return FeedbackLog(source, options)
+      return FileLog(source, options)
     else:
-      # todo add regex and error message
-      return DeviceLog(source, options)
+      match = re.search('Report/([0-9]+)', source)
+      if match:
+        return FeedbackLog(match.group(1), options)
+      else:
+        # todo add regex and error message
+        return DeviceLog(source, options)
+
+  if activity or evdev:
+    log = AbstractLog()
+    if activity:
+      if os.path.exists(activity):
+        log.activity = open(activity).read()
+      else:
+        log.activity = activity
+    if evdev:
+      if os.path.exists(evdev):
+        log.evdev = open(evdev).read()
+      else:
+        log.evdev = evdev
+    return log
 
 
 class AbstractLog(object):
@@ -47,6 +61,12 @@ class AbstractLog(object):
   A log file consists of the activity log, the evdev log, a system log, and
   possibly a screenshot, which can be saved to disk all together.
   """
+  def __init__(self):
+    self.activity = None
+    self.evdev = None
+    self.system = None
+    self.image = None
+
   def SaveAs(self, filename):
     open(filename, 'w').write(self.activity)
     if self.evdev:
@@ -71,7 +91,7 @@ class FileLog(AbstractLog):
     self.evdev = ''
     self.system = ''
     self.image = None
-    if options.evdev:
+    if options and options.evdev:
       self.evdev = open(options.evdev).read()
     elif os.path.exists(filename + '.evdev'):
       self.evdev = open(filename + '.evdev').read()

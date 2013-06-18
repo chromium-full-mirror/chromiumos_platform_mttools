@@ -44,6 +44,7 @@ setup-in-place:
 
 	# install symlinks to command line tools
 	ln -sf $(SRC)/mtedit/main.py /usr/bin/mtedit
+	ln -sf $(SRC)/mtreplay/main.py /usr/bin/mtreplay
 
 clean-in-place:
 	$(foreach dep, $(IN_PLACE_DEPS), OUT=. make -C $(dep) clean-in-place;)
