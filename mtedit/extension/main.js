@@ -228,6 +228,11 @@ function convertEventStreamToEntries(data) {
       }
     }
   }
+  // Add a default empty EV_SYN entry if there are no events as
+  // finger_view_controller expects a non-empty obj.entries.
+  if (obj.entries.length === 0) {
+    obj.entries.push(clone(evt));
+  }
   // For touchscreens the absolute value is more useful than the scaled value.
   obj.hardwareProperties.xResolution = 1.0;
   obj.hardwareProperties.yResolution = 1.0;
