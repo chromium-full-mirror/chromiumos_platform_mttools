@@ -23,7 +23,13 @@ class ReplayResults(object):
     self.gestures_log = replay.gestures_log
     self.evdev_log = replay.evdev_log
     self.log = Log(activity=replay.activity_log)
-    self.gestures = GestureLog(replay.activity_log)
+    self._gestures = None
+
+  @property
+  def gestures():
+    if not self._gestures:
+      self._gestures = GestureLog(self.log.activity)
+    return self._gestures
 
   def View(self, what):
     if what == None:
@@ -71,6 +77,9 @@ class MTReplay(object):
       platform = self.database.platforms[force_platform]
     else:
       platform = self.PlatformOf(log)
+    if not platform:
+      return None
+
     replay = RawReplay(platform.hwprops_file, platform.device_class)
 
     events = NamedTemporaryFile('w', delete=True)

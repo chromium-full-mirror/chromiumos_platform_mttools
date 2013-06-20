@@ -212,9 +212,9 @@ class PlatformDatabase(object):
         if result:
           print ('multiple matching platforms:', result.name,
                  'and', platform.name)
-          sys.exit(-1)
+          return None
         result = platform
     if not result:
       print 'cannot find matching platform'
-      sys.exit(-1)
+      return None
     return result

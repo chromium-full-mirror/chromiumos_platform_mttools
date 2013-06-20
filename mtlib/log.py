@@ -111,6 +111,10 @@ class FeedbackLog(AbstractLog):
     self.image = None
     self.force_latest = force_latest
     self.try_screenshot = options and options.screenshot
+    self.report = None
+    self.system = None
+    self.activity = None
+    self.evdev = None
 
     if id_or_filename.endswith('.zip') or id_or_filename.endswith('.bz2'):
       self.report = open(id_or_filename).read()
@@ -123,8 +127,10 @@ class FeedbackLog(AbstractLog):
     else:
       self.downloader = FeedbackDownloader()
       self.report = self.downloader.DownloadSystemLog(id_or_filename)
-      self._ExtractSystemLog()
-      self._ExtractLogFiles()
+      if self.report:
+        self._ExtractSystemLog()
+      if self.system:
+        self._ExtractLogFiles()
       if self.try_screenshot:
         self.image = self.downloader.DownloadScreenshot(id_or_filename)
 
@@ -163,10 +169,10 @@ class FeedbackLog(AbstractLog):
       assert interface == 'pad' or interface == 'screen'
 
       log_index = [
-        (('hack-33025-touch{0}_activity=\'\'\'\n' +
+        (('hack-33025-touch{0}_activity=\"\"\"\n' +
           'begin-base64 644 touch{0}_activity_log.tar\n').format(interface),
           '"""'),
-        (('touch{0}_activity=\'\'\'\n' +
+        (('touch{0}_activity=\"\"\"\n' +
           'begin-base64 644 touch{0}_activity_log.tar\n').format(interface),
           '"""'),
         (('hack-33025-touch{0}_activity=<multiline>\n' +
