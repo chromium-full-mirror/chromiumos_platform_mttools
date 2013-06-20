@@ -30,39 +30,58 @@ function doneLoading() {
   $('#loading').hide();
 }
 
-function onHashChange() {
+function parseWindowHash() {
+  var args = {};
   if (window.ignoreHashChange) {
     window.ignoreHashChange = false;
-    return;
+    return args;
   }
   var hash = window.location.hash.substr(1);
   if (hash.length > 0) {
     var params = hash.split('&');
-    window.args = {};
     for (var i = 0; i < params.length; i++) {
       var param = params[i].split('=', 2);
       args[param[0]] = param.length > 0 ? param[1] : true;
     }
-    var reportId = args.reportId;
-    var extension = args.extension;
-    if (reportId && extension) {
-      var request = new XMLHttpRequest();
-      request.responseType = 'arraybuffer';
-      startLoading();
-      request.onreadystatechange = function(evt) {
-        if (this.readyState === 4) {
-          if (this.status === 200 && this.response) {
-            loadFileContent(this.response);
-            $('#screenshot').attr('src', getScreenshotUrl(reportId));
-          } else {
-            console.log('Error loading system logs.');
-          }
-          doneLoading();
-        }
+  }
+  return args;
+}
+
+function processArguments(args) {
+  var file = args.file || args.f;
+  var reportId = args.reportId;
+  var extension = args.extension;
+  var loadFileAndScreenshot = function(requestUrl, screenshotUrl, error) {
+    var request = new XMLHttpRequest();
+    request.responseType = 'arraybuffer';
+    request.addEventListener('load', function() {
+      var loadFileAfterImage = function() {
+        loadFileContent(request.response);
+        doneLoading();
       };
-      request.open('GET', getFeedbackUrl(reportId, extension));
-      request.send();
-    }
+      $('#screenshot').prop('src', screenshotUrl)
+          .load(loadFileAfterImage).error(loadFileAfterImage);
+    });
+    request.addEventListener('error', function() {
+      console.error(error);
+      doneLoading();
+    });
+    request.open('GET', requestUrl);
+    request.send();
+  };
+  if (reportId && extension) {
+    loadFileAndScreenshot(
+        getFeedbackUrl(reportId, extension),
+        getScreenshotUrl(reportId),
+        'Failed to load system logs for report id ' + reportId + '.');
+  } else if (file) {
+    var path = window.location.href;
+    path = path.substr(0, path.indexOf('#'));
+    path = path.substr(0, path.lastIndexOf('/') + 1);
+    loadFileAndScreenshot(
+        path + file,
+        path + file + '.jpg',
+        'Failed to load ' + file + ' locally.');
   }
 }
 
@@ -621,6 +640,14 @@ function touchscreenToggle(on) {
   }
 }
 
+function convertArrayToString(int_array) {
+  var char_array = [];
+  for (var i = 0; i < int_array.length; i++) {
+    char_array.push(String.fromCharCode(int_array[i]));
+  }
+  return char_array.join('');
+}
+
 function extractActivityLog(tar, type) {
   // a tar file is a sequence of 512 byte blocks. Starting with a header block
   // followed by the contents of that file, repeated for as many files
@@ -687,11 +714,7 @@ function extractActivityLog(tar, type) {
   log = log_list[0];
   var log_data = new Uint8Array(tar.slice(log.offset, log.offset + log.length));
   if (type === LOG_SCREEN) {
-    var char_array = [];
-    for (var i = 0; i < log_data.length; i++) {
-      char_array.push(String.fromCharCode(log_data[i]));
-    }
-    return char_array.join('');
+    return convertArrayToString(log_data);
   } else {
     return (new JXG.Util.Unzip(log_data)).unzip()[0][0];
   }
@@ -750,11 +773,11 @@ function extractAndLoadLog(log) {
       if (first_available_log === null) {
         first_available_log = log;
       }
-      select.append($('<option></option>').attr('value', type).text(type));
+      select.append($('<option></option>').prop('value', type).text(type));
     }
   });
   select.change(function() {
-    var type = $(this).attr('value');
+    var type = $(this).prop('value');
     if (logs[type] !== null) {
       loadLog(convertStrToLog(logs[type]));
     }
@@ -778,12 +801,24 @@ function loadFileContent(buffer) {
       return dataArray[index];
     },
   });
-  // If the file is not a valid zip file, assume it is bzip2.
+  // If the file is not a valid zip file, check for bz2, otherwise assume raw
+  // file content
   if (unzipper.isZipFile()) {
     unzipper.readEntries();
     feedback = JSInflate.inflate(unzipper.entries[0].data);
   } else {
-    feedback = bzip2.simple(bzip2.array(dataArray));
+    var bz2Array = bzip2.array(dataArray);
+    // The bzip2.header method throws an exception if the array does not
+    // represent a valid bz2 file.
+    try {
+      bzip2.header(bz2Array);
+    } catch (e) {
+      // Not a bz2 file, load as a plain file input
+      var rawInput = convertArrayToString(dataArray);
+      loadLog(convertStrToLog(rawInput));
+      return;
+    }
+    feedback = bzip2.simple(bz2Array);
   }
   extractAndLoadLog(feedback);
 }
@@ -919,10 +954,15 @@ $(document).ready(function() {
   // The jQuery hashchange event is bound to the window.onhashchange event. This
   // event is fired whenever the part of the url following the # symbol is
   // changed.
-  $(window).bind('hashchange', onHashChange);
-  onHashChange();
-  // Loading feedback report from url takes precedence
-  if (args.reportId === undefined) {
+  $(window).bind('hashchange', function() {
+    processArguments(parseWindowHash());
+  });
+  var args = parseWindowHash();
+  processArguments(args);
+  // Loading feedback report from url or file takes precedence
+  if (args.reportId === undefined &&
+      args.f === undefined &&
+      args.file === undefined) {
     logname = $.url().fparam('id');
     use_server = logname !== '';
     if (use_server) {
