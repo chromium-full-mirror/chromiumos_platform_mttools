@@ -15,9 +15,14 @@ function FingerViewController(inGraph, outGraph, inText, popup, outLockHead) {
   this.popup = popup;
   this.outLockHead = outLockHead[0];
   this.background = null;
+  this.drawStyle = FingerViewController.prototype.style.PAINT;
 };
 
 FingerViewController.prototype = {
+  style: {
+    STANDARD: 'STANDARD',
+    PAINT: 'Paint',
+  },
   setEntriesLog: function(log, layer) {
     var tmp = log;
     for (var i = 0; i < layer; i++)
@@ -447,6 +452,7 @@ FingerViewController.prototype = {
         var trId = fingerState.trackingId;
         var pt = {'xPos': fingerState.positionX / xRes,
                   'yPos': fingerState.positionY / yRes};
+        var touchType = 'start';
         if (trId in lastPosDict) {
           // Draw line from previous point to here
           var i255 = finalTimestamp ? parseInt(intensity * 255) : 0;
@@ -457,9 +463,11 @@ FingerViewController.prototype = {
                       ['rgb(', i255, ',', i255, ',', i255, ')'].join('') };
           segs.push(line);
           lines.push(line);
+          touchType = 'move';
         }
         newLast[trId] = pt;
         var color = '#ccc';
+        var fillColor = '';
         if (finalTimestamp) {
           var i192 = parseInt(intensity * 192);
           color = ['rgb(', i192, ',', i192, ',', i192, ')'].join('');
@@ -467,13 +475,30 @@ FingerViewController.prototype = {
         var outPressure = fingerState.pressure *
             this.log.properties['Pressure Calibration Slope'] +
             this.log.properties['Pressure Calibration Offset'];
+        var radius;
+        var label = fingerState.trackingId + ';' + outPressure.toFixed(2);
+        if (this.drawStyle === FingerViewController.prototype.style.PAINT) {
+          var hue = (fingerState.trackingId * 30) % 256;
+          var lum = Math.round(outPressure * 0.8 + 20);
+          label = '';
+          fillColor = 'hsla(' + hue + ', 100%, ' + lum + '%, 0.1)';
+          if (touchType === 'move') {
+            color = '';
+          } else {
+            color = '#000';
+          }
+          radius = outPressure;
+          if (!radius || radius < 5) {
+            radius = 5;
+          }
+        }
         var self = this;
         var circle = {'type': GraphController.CIRCLE,
                       'center': pt,
                       'color': color,
-                      'radius': outPressure / 4,
-                      'label': fingerState.trackingId + ';' +
-                          outPressure.toFixed(2),
+                      'fillColor': fillColor,
+                      'radius': radius,
+                      'label': label,
                       'onSelected': function(pageX, pageY) {
                         self.handleEntrySelected(
                             entry, prevEntry, pageX, pageY);
@@ -593,7 +618,6 @@ FingerViewController.prototype = {
         var self = this;
         segs.push({'type': GraphController.CIRCLE,
                    'center': {'xPos': xPos, 'yPos': yPos},
-                   'radius': 3,
                    'color': '#ccc',
                    'onSelected': function(pageX, pageY) {
                      self.handleEntrySelected(entry, prevEntry, pageX, pageY);

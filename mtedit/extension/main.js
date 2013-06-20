@@ -331,12 +331,12 @@ function loadLog(obj) {
       alert('Unrecognized input file');
       return;
     }
-    // If obj.isTouchScreen is true, then manually switch to touchscreen mode
-    touchscreenToggle(!!obj.isTouchscreen);
     json_obj = obj;
     generateRadioButtons(obj);
     current_layer = 0;
     loadLogObj(obj, true);
+    // If obj.isTouchScreen is true, then manually switch to touchscreen mode
+    touchscreenToggle(!!obj.isTouchscreen);
 }
 
 function convertStrToLog(str) {
@@ -569,6 +569,17 @@ function radioChange(e) {
   }
 }
 
+function paintStyleChange() {
+  if ($(this).is(':checked')) {
+    finger_view_controller.drawStyle =
+        FingerViewController.prototype.style.PAINT;
+  } else {
+    finger_view_controller.drawStyle =
+        FingerViewController.prototype.style.STANDARD;
+  }
+  finger_view_controller.redraw();
+}
+
 function touchscreenToggle(on) {
   var isTouchscreen = false;
   var inputWidth = '';
@@ -593,6 +604,16 @@ function touchscreenToggle(on) {
   finger_view_controller.setHighlightPopup(on);
   finger_view_controller.setBackground(image);
   finger_view_controller.resetZooms();
+
+  // Allow changing paint styles only for touchscreen view, lock to standard
+  // paint style for touchpad view.
+  if (on) {
+    $('#paint-style').change();
+  } else {
+    finger_view_controller.drawStyle =
+        FingerViewController.prototype.style.STANDARD;
+    finger_view_controller.redraw();
+  }
 }
 
 function extractActivityLog(tar, type) {
@@ -777,6 +798,7 @@ $(document).ready(function() {
   finger_view_controller = new FingerViewController(
       inGc, gc, $('#intext'), $('#popup'), $('#out-lock-head'));
 
+  $('#paint-style').change(paintStyleChange);
   $('#out-resetzoom').button({
     icons: {
       primary: 'ui-icon-arrow-4-diag'

@@ -222,19 +222,30 @@ GraphController.prototype = {
   },
   drawCircle: function(ctx, item) {
     var pt = this.pointToView(item.center)
+    var radius = 3;
+    if (item.radius) {
+      radius = Math.max(this.radiusToView(item.radius), 3);
+    }
+    var fillColor = item.fillColor;
+    if (this.highlightSelected && item === this.selected) {
+      fillColor = 'red';
+    }
     ctx.beginPath();
     ctx.strokeStyle = item.color;
-    //var radius = 'radius' in item ? item.radius : 3;
-    ctx.arc(pt.xPos, pt.yPos, 3, 0, Math.PI * 2.0, true);
+    ctx.arc(pt.xPos, pt.yPos, radius, 0, Math.PI * 2.0, true);
+    ctx.closePath();
+    if (fillColor) {
+      ctx.fillStyle = fillColor;
+      ctx.fill();
+    }
+    if (item.color) {
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = item.color;
+      ctx.stroke();
+    }
     if (item.label) {
       ctx.fillStyle = item.color;
       ctx.fillText(item.label, pt.xPos, pt.yPos);
-    }
-    if (this.highlightSelected && item === this.selected) {
-      ctx.fillStyle = 'green';
-      ctx.fill();
-    } else {
-      ctx.stroke();
     }
   },
   drawImage: function(ctx, item) {
@@ -243,6 +254,11 @@ GraphController.prototype = {
     var width = end.xPos - start.xPos;
     var height = end.yPos - start.yPos;
     ctx.drawImage(item.image, start.xPos, start.yPos, width, height);
+  },
+  radiusToView: function(radius) {
+    return radius * Math.min(
+        this.canvas.width / (this.xMax - this.xMin),
+        this.canvas.height / (this.yMax - this.yMin));
   },
   pointToView: function(pt) {
     var arr = [pt.xPos, pt.yPos];
