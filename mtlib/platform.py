@@ -123,16 +123,27 @@ class PlatformProperties(object):
       self.x_min = int(self.properties['Active Area Left'])
     if 'Active Area Right' in self.properties:
       self.x_max = int(self.properties['Active Area Right'])
-    if 'Horizontal Resolution' in self.properties:
-      self.x_res = int(self.properties['Horizontal Resolution'])
     if 'Active Area Top' in self.properties:
       self.y_min = int(self.properties['Active Area Top'])
     if 'Active Area Bottom' in self.properties:
       self.y_max = int(self.properties['Active Area Bottom'])
+
+    if 'Horizontal Resolution' in self.properties:
+      self.x_res = int(self.properties['Horizontal Resolution'])
     if 'Vertical Resolution' in self.properties:
       self.y_res = int(self.properties['Vertical Resolution'])
 
-  def Match(self, other, debug=False):
+    if 'SemiMT Non Linear Area Left' in self.properties:
+      self.x_min = int(self.properties['SemiMT Non Linear Area Left'])
+    if 'SemiMT Non Linear Area Right' in self.properties:
+      self.x_max = int(self.properties['SemiMT Non Linear Area Right'])
+    if 'SemiMT Non Linear Area Top' in self.properties:
+      self.y_min = int(self.properties['SemiMT Non Linear Area Top'])
+    if 'SemiMT Non Linear Area Bottom' in self.properties:
+      self.y_max = int(self.properties['SemiMT Non Linear Area Bottom'])
+
+
+  def Match(self, other, loose, debug=False):
     """ Compare properties and return similarity.
 
     Compare these properties to another PlatformProperties instance.
@@ -165,7 +176,11 @@ class PlatformProperties(object):
     compare_attr('x_min')
     compare_attr('x_max')
     compare_attr('x_res')
-    compare_prop('Pressure Calibration Offset')
+    compare_attr('y_min')
+    compare_attr('y_max')
+    compare_attr('y_res')
+    if not loose:
+      compare_prop('Pressure Calibration Offset')
 
     if self.required_axis:
       if debug:
@@ -193,7 +208,7 @@ class PlatformDatabase(object):
       name = file.replace('.hwprops', '')
       self.platforms[name] = PlatformProperties(platform=name)
 
-  def FindMatching(self, log, debug=False):
+  def FindMatching(self, log, loose=True, debug=False):
     """ Find platform matching activity_data.
 
     Returns the PlatformProperties instance of the platform matching
@@ -205,11 +220,15 @@ class PlatformDatabase(object):
     for name, platform in self.platforms.items():
       if debug:
         print "#" * 10, name
-      score = platform.Match(properties)
+      score = platform.Match(properties, loose, debug)
       if debug:
         print name, "score =", score
       if score > 0.9:
         if result:
+          if loose:
+            if debug:
+              print "-" * 10, "Multiple matches. Try strict"
+            return self.FindMatching(log, False, debug)
           print ('multiple matching platforms:', result.name,
                  'and', platform.name)
           return None

@@ -26,7 +26,7 @@ class ReplayResults(object):
     self._gestures = None
 
   @property
-  def gestures():
+  def gestures(self):
     if not self._gestures:
       self._gestures = GestureLog(self.log.activity)
     return self._gestures
@@ -68,8 +68,8 @@ class MTReplay(object):
   def __init__(self):
     self.database = PlatformDatabase()
 
-  def PlatformOf(self, log):
-    return self.database.FindMatching(log)
+  def PlatformOf(self, log, debug=False):
+    return self.database.FindMatching(log, debug=debug)
 
   def Replay(self, log, override_properties=None, force_platform=None,
              gdb=False):

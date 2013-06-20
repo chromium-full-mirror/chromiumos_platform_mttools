@@ -51,10 +51,14 @@ def main(argv):
   log = Log(args[0])
 
   if options.platform:
-    print replay.PlatformOf(log).name
+    platform = replay.PlatformOf(log, True)
+    if platform:
+      print platform.name
     return
 
-  replay.Replay(log).View(options.view)
+  results = replay.Replay(log)
+  if results:
+    results.View(options.view)
 
 
 if __name__ == '__main__':

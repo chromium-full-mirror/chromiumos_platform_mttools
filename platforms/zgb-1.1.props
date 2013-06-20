@@ -1,0 +1,18 @@
+{
+	"gestures": {
+                "SemiMT Non Linear Area Left": 1265,
+		"SemiMT Non Linear Area Right": 5678,
+		"SemiMT Non Linear Area Top": 1103,
+		"SemiMT Non Linear Area Bottom": 4754
+	},
+	"xorg": {
+		"file": "50-touchpad-cmt-zgb.conf",
+		"identifiers": ["touchpad zgb"]
+	},
+	"ignore": [
+		"Active Area Left",
+		"Active Area Right",
+		"Active Area Top",
+		"Active Area Bottom"
+	]
+}

@@ -9,6 +9,7 @@ import multiprocessing
 import os
 import random
 import re
+import traceback
 import urllib
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -37,8 +38,12 @@ class MTStat(object):
     try:
       # might throw IO/Tar/Zip/etc exceptions
       report = FeedbackLog(id, force_latest='pad')
+      # Test parse. Will throw exception on malformed log
+      json.loads(report.activity)
     except:
       print 'Invalid report %s' % id
+      return
+
     # check if report contains logs and actual events
     if report.activity and report.evdev and 'E:' in report.evdev:
       report.SaveAs(filename)
@@ -79,25 +84,26 @@ class MTStat(object):
     The return value is a list of all log entries found.
     """
     TAG = 'MTStat:'
+    try:
+      log = Log(filename)
+      replay = MTReplay()
+      platform = replay.PlatformOf(log)
+      if not platform:
+        print 'No platform for %s' % os.path.basename(filename)
+        return ([], 0)
 
-    log = Log(filename)
-    replay = MTReplay()
-    platform = replay.PlatformOf(log)
-    if not platform:
-      print 'No platform for %s' % os.path.basename(filename)
+      # count the number of syn reports in log file
+      num_syn = len(tuple(re.finditer("0000 0000 0", log.evdev)))
+
+      result = replay.Replay(log)
+      stats = []
+      for line in result.gestures_log.splitlines():
+        if TAG in line:
+          stats.append(line[line.find(TAG) + len(TAG):])
+      return (stats, num_syn)
+    except:
+      print filename, traceback.format_exc()
       return ([], 0)
-    print 'Replaying %s on platform %s' % (os.path.basename(filename),
-                                           platform.name)
-
-    # count the number of syn reports in log file
-    num_syn = len(tuple(re.finditer("0000 0000 0", log.evdev)))
-
-    result = replay.Replay(log)
-    stats = []
-    for line in result.gestures_log.splitlines():
-      if TAG in line:
-        stats.append(line[line.find(TAG) + len(TAG):])
-    return (stats, num_syn)
 
   def GatherStats(self, number=None, parallel=True):
     """ Gathers stats on feedback reports.
@@ -131,9 +137,9 @@ class MTStat(object):
           stats[line] = 0
         stats[line] = stats[line] + 1
 
-    # syn reports are coming at 30 Hz on most platforms
+    # syn reports are coming at approx 60 Hz on most platforms
     syn_per_second = 60.0
     hours = num_syn / syn_per_second / 60.0 / 60.0
 
-    print "Processed %.2f hours of interaction)" % hours
+    print "Processed ~%.2f hours of interaction" % hours
     return stats
