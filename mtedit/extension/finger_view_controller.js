@@ -65,6 +65,10 @@ FingerViewController.prototype = {
         return i;
     return -1;
   },
+  setEndPoint: function(index) {
+    this.end = index;
+    this.redraw();
+  },
   getHardwareStateLETimestamp: function(timestamp) {
     for (var i = this.entries.length - 1; i >= 0; i--) {
       if (this.entries[i].type == 'hardwareState' &&

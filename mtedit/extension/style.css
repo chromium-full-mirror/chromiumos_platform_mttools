@@ -87,6 +87,11 @@ h2, h3 {
 	margin-top: -0.5em;
 }
 
+#play {
+	float: left;
+	margin-top: -0.5em;
+}
+
 #touchselect {
 	clear: both;
 }
@@ -110,6 +115,7 @@ h2, h3 {
 }
 
 #sliderdiv {
+	margin-left: 8em;
 	margin-right: 10em;
 }
 
