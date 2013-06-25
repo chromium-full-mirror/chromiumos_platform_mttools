@@ -117,7 +117,7 @@ function loadLogObj(obj, isNew) {
   }
   finger_view_controller.setEntriesLog(obj, current_layer);
   finger_view_controller.initFTS();
-  var MAX_SIZE = 10000;
+  var MAX_SIZE = 30000;
   var min = Math.max(0, finger_view_controller.entries.length - MAX_SIZE);
   var max = finger_view_controller.entries.length - 1;
   if (isNew) {
