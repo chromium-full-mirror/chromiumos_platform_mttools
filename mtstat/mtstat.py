@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 from mtlib.log import Log, FeedbackDownloader, FeedbackLog
 from mtreplay import MTReplay
+import collections
 import json
 import multiprocessing
 import os
@@ -18,11 +19,28 @@ if not os.path.exists(log_dir):
   os.mkdir(log_dir)
 
 
-def MTStatSubprocess(filename):
-  return MTStat().GatherStatsFromFile(filename)
+def MTStatGatherSubprocess(filename):
+  return MTStat().GatherEntriesFromFile(filename)
+
 
 def MTStatDownloadSubprocess(id):
   return MTStat().DownloadFile(id)
+
+
+class MTStatEntry(object):
+  TAG = 'MTStat:'
+  def __init__(self, logline, id):
+    self.logline = logline
+    self.id = id
+    startidx = logline.find(MTStatEntry.TAG) + len(MTStatEntry.TAG)
+    self.tagline = logline[startidx:]
+
+  @property
+  def timestamp(self):
+    match = re.search('([0-9]+\.[0-9]+)\:MTStat', self.logline)
+    if match:
+      return float(match.group(1))
+    return 0.0
 
 class MTStat(object):
   def DownloadFile(self, id):
@@ -77,15 +95,15 @@ class MTStat(object):
     else:
       results = map(MTStatDownloadSubprocess, report_ids)
 
-  def GatherStatsFromFile(self, filename):
-    """ Gathers statistics on a log file
+  def GatherEntriesFromFile(self, filename):
+    """ Gathers all MTStat entries from a log file
 
     Replays a logfile and searched for MTStat log entries.
     The return value is a list of all log entries found.
     """
-    TAG = 'MTStat:'
     try:
       log = Log(filename)
+      id = os.path.basename(filename)
       replay = MTReplay()
       platform = replay.PlatformOf(log)
       if not platform:
@@ -98,48 +116,102 @@ class MTStat(object):
       result = replay.Replay(log)
       stats = []
       for line in result.gestures_log.splitlines():
-        if TAG in line:
-          stats.append(line[line.find(TAG) + len(TAG):])
+        if MTStatEntry.TAG in line:
+          stats.append(MTStatEntry(line, filename))
       return (stats, num_syn)
     except:
       print filename, traceback.format_exc()
       return ([], 0)
 
-  def GatherStats(self, number=None, parallel=True):
-    """ Gathers stats on feedback reports.
-
-    number: optional number of random reports to use
-    parallel: use parallel processing
-
-    returns a dictionary representing the histogram of all
-    MTStat log entries.
-    """
-    files = [os.path.join(log_dir, f) for f in os.listdir(log_dir)
-                                      if f.isdigit()]
+  def _GatherEntries(self, number, parallel):
+    files = [os.path.abspath(os.path.join(log_dir, f))
+             for f in os.listdir(log_dir)
+             if f.isdigit()]
 
     if number is not None:
       files = random.sample(files, number)
 
+    print "Processing %d log files" % len(files)
+
     if parallel:
       pool = multiprocessing.Pool()
-      results = pool.map(MTStatSubprocess, files)
+      pool_results = pool.map(MTStatGatherSubprocess, files)
       pool.terminate()
     else:
-      results = map(MTStatSubprocess, files)
+      pool_results = map(MTStatGatherSubprocess, files)
 
-    # build histogram of stat lines
-    stats = {}
-    num_syn = 0
-    for stat_lines, log_syn in results:
-      num_syn = num_syn + log_syn
-      for line in stat_lines:
-        if line not in stats:
-          stats[line] = 0
-        stats[line] = stats[line] + 1
+    entries = []
+    syn_count = 0
+    for pool_entries, pool_syn_count in pool_results:
+      syn_count = syn_count + pool_syn_count
+      entries.extend(pool_entries)
 
     # syn reports are coming at approx 60 Hz on most platforms
     syn_per_second = 60.0
-    hours = num_syn / syn_per_second / 60.0 / 60.0
+    hours = syn_count / syn_per_second / 60.0 / 60.0
 
     print "Processed ~%.2f hours of interaction" % hours
-    return stats
+
+    return entries
+
+  def Search(self, search, number=None, parallel=True):
+    """ Search for occurences of a specific tag
+
+    number: optional number of random reports to use
+    parallel: use parallel processing
+
+    returns a dictionary of lists containing the matches
+    for each file.
+    """
+    entries = self._GatherEntries(number, parallel)
+
+    entries_by_id = collections.defaultdict(list)
+    for entry in entries:
+      if entry.tagline == search:
+        entries_by_id[entry.id].append(entry)
+    return entries_by_id
+
+  def GatherStats(self, number=None, parallel=True):
+    """ Gathers stats on feedback reports.
+
+    Each tag is part of a group, with group names separated
+    by colons. Each group can also have sub-groups for example:
+
+    GroupA:ValueA
+    GroupA:ValueB
+    GroupA:Subgroup:ValueA
+    GroupA:Subgroup:ValueB
+
+    number: optional number of random reports to use
+    parallel: use parallel processing
+
+    returns a dictionary that maps a tag to a tuple of
+    it's number of occurences and it's ratio.
+    The ratios are calculated within each group (excluding sub-groups)
+    """
+    entries = self._GatherEntries(number, parallel)
+
+    # build histogram of stat lines
+    counts = collections.defaultdict(lambda: 0)
+    num_syn = 0
+    for entry in entries:
+      counts[entry.tagline] = counts[entry.tagline] + 1
+
+    def get_parent(tagline):
+      return ":".join(tagline.split(":")[:-1])
+
+    # calculate ratios
+    ratios = {}
+    for tagline, count in counts.items():
+      parent = get_parent(tagline)
+      sibling_sum = 0
+      for other, other_count in counts.items():
+        if get_parent(other) == parent:
+          sibling_sum = sibling_sum + other_count
+      ratios[tagline] = float(count) / float(sibling_sum)
+
+    stats = {}
+    for key in counts.keys():
+      stats[key] = (counts[key], ratios[key])
+
+    return collections.OrderedDict(sorted(stats.iteritems()))

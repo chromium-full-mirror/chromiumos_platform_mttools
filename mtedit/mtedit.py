@@ -50,26 +50,31 @@ class MTEdit(object):
     print 'No port between 9900-9999 is available'
     exit(-1)
 
-  def _PrintTPViewURL(self):
-    print self.server_url + ('edit#id=%05x' % random.randrange(256 ** 5))
+  def _PrintTPViewURL(self, start_t=None, end_t=None):
+    url = self.server_url + ('edit#id=%05x' % random.randrange(256 ** 5))
+    if start_t:
+      url = url + '&start=%f' % start_t
+    if end_t:
+      url = url + '&end=%f' % end_t
+    print url
 
-  def View(self, log):
+  def View(self, log, at=None):
     """ View 'log' in TPView.
 
     If the persistent flag is set the server
     will stay alive until the process is killed. Otherwise it will exit
     after the view has been served.
     """
-    self._PrintTPViewURL()
+    self._PrintTPViewURL(end_t=at)
     server.View(self.port, log.activity, self.persistent)
 
-  def Edit(self, log):
+  def Edit(self, log, start_t=None, end_t=None):
     """ View 'log' in TPView and wait for file to be saved.
 
     Returns the edited results. The server will exit after the
     file has been saved.
     """
-    self._PrintTPViewURL()
+    self._PrintTPViewURL(start_t, end_t)
     log.activity = server.Edit(self.port, log.activity)
 
     from mtreplay import MTReplay
