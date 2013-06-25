@@ -32,10 +32,6 @@ function doneLoading() {
 
 function parseWindowHash() {
   var args = {};
-  if (window.ignoreHashChange) {
-    window.ignoreHashChange = false;
-    return args;
-  }
   var hash = window.location.hash.substr(1);
   if (hash.length > 0) {
     var params = hash.split('&');
@@ -47,16 +43,65 @@ function parseWindowHash() {
   return args;
 }
 
+function updateWindowHash(newArgs) {
+  var args = parseWindowHash();
+  for (name in newArgs) {
+    // Only if newArgs specifically sets an undefined key do we delete from
+    // args. Otherwise only add/update key/value pairs in newArgs.
+    if (newArgs[name] === undefined) {
+      delete args[name];
+    } else {
+      args[name] = newArgs[name];
+    }
+  }
+
+  var argValues = [];
+  for (var name in args) {
+    argValues.push(name + '=' + args[name]);
+  }
+  var newHash = '#' + argValues.join('&');
+
+  // Set a flag so this hash change does not trigger processArguments
+  window.ignoreNextHashChange = true;
+  window.location.hash = newHash;
+  return newHash;
+}
+
+
 function processArguments(args) {
   var file = args.file || args.f;
   var reportId = args.reportId;
   var extension = args.extension;
+  var startTime = args.startTime;
+  var endTime = args.endTime;
+  var logIndex = args.logIndex;
+
+  // This range selection only matters after we load a file.
+  var processAfterLoading = function() {
+    // Fast forward to the range defined by startTime and endTime
+    var beginIndex = 0;
+    var endIndex = finger_view_controller.entries.length;
+    if (startTime) {
+      beginIndex =
+          finger_view_controller.getHardwareStateGETimestamp(startTime);
+    }
+    if (endTime) {
+      endIndex =
+          finger_view_controller.getHardwareStateLETimestamp(endTime);
+    }
+    finger_view_controller.setRange(beginIndex, endIndex);
+    finger_view_controller.resetZooms();
+    $('#slider').slider('option', 'values', [beginIndex, endIndex]);
+  };
+
   var loadFileAndScreenshot = function(requestUrl, screenshotUrl, error) {
+    startLoading();
     var request = new XMLHttpRequest();
     request.responseType = 'arraybuffer';
     request.addEventListener('load', function() {
       var loadFileAfterImage = function() {
-        loadFileContent(request.response);
+        loadFileContent(request.response, logIndex);
+        processAfterLoading();
         doneLoading();
       };
       $('#screenshot').prop('src', screenshotUrl)
@@ -69,6 +114,8 @@ function processArguments(args) {
     request.open('GET', requestUrl);
     request.send();
   };
+
+  // Load file from feedback report or local server
   if (reportId && extension) {
     loadFileAndScreenshot(
         getFeedbackUrl(reportId, extension),
@@ -607,6 +654,28 @@ function exportRange() {
   setTextBoxAndSelect(convertEntriesToEventStream(snippet));
 }
 
+function displayLink() {
+  var beginIndex = finger_view_controller.begin;
+  var endIndex = finger_view_controller.end;
+  if (beginIndex >= 0 && endIndex >= 0) {
+    var startTime = finger_view_controller.getGETimestamp(beginIndex);
+    var endTime = finger_view_controller.getLETimestamp(endIndex);
+
+    if (startTime < 0) {
+      startTime = undefined;
+    }
+    if (endTime < 0) {
+      endTime = undefined;
+    }
+
+    updateWindowHash({
+      'startTime': startTime,
+      'endTime': endTime,
+    });
+    setTextBoxAndSelect(window.location);
+  }
+}
+
 function generateRadioButtons(obj) {
   var radioHTML = '<input type="radio" name="viewLayer" value="0" ' +
                   'checked="checked" onclick="radioChange(event)">' +
@@ -771,7 +840,7 @@ function extractActivityLog(tar, type) {
   }
 }
 
-function extractAndLoadLog(log) {
+function extractAndLoadLog(log, logIndex) {
   var extractByInterface = function(type) {
     var start_index = [
       'hack-33025-touch' + type + '_activity="""\n' +
@@ -812,7 +881,6 @@ function extractAndLoadLog(log) {
 
 
   var logs = {};
-  var first_available_log = null;
   var select = $('#select');
 
   logs[LOG_PAD] = extractByInterface(LOG_PAD);
@@ -821,22 +889,35 @@ function extractAndLoadLog(log) {
   select.empty();  // Remove old options
   $.each(logs, function(type, log) {
     if (log !== null) {
-      if (first_available_log === null) {
-        first_available_log = log;
+      if (logIndex === type || logIndex === undefined) {
+        logIndex = type;
+        select.append($('<option></option>')
+                      .prop('value', type)
+                      .prop('selected', 'selected')
+                      .text(type));
+      } else {
+        select.append($('<option></option>').prop('value', type).text(type));
       }
-      select.append($('<option></option>').prop('value', type).text(type));
     }
   });
   select.change(function() {
     var type = $(this).prop('value');
     if (logs[type] !== null) {
+      // Update the hash arguments when logs are switched.
+      updateWindowHash({
+        'logIndex': type,
+      });
       loadLog(convertStrToLog(logs[type]));
     }
   });
 
-  // parse as json and load the first option
-  if (first_available_log !== null) {
-    loadLog(convertStrToLog(first_available_log));
+  // Parse as json and load the first available log or a preselected log.
+  if (logIndex !== undefined) {
+    // Keep track in the hash arguments which log we are loading.
+    updateWindowHash({
+      'logIndex': logIndex,
+    });
+    loadLog(convertStrToLog(logs[logIndex]));
   }
 }
 
@@ -844,7 +925,7 @@ function extractAndLoadLog(log) {
  * Loads from a buffer, either from uploaded file or from feedback report urls.
  * @param {ArrayBuffer} buffer Contains the entire file's contents.
  */
-function loadFileContent(buffer) {
+function loadFileContent(buffer, logIndex) {
   var feedback = '';
   var dataArray = new Uint8Array(buffer);
   var unzipper = new JSUnzip({
@@ -871,7 +952,7 @@ function loadFileContent(buffer) {
     }
     feedback = bzip2.simple(bz2Array);
   }
-  extractAndLoadLog(feedback);
+  extractAndLoadLog(feedback, logIndex);
 }
 
 $(document).ready(function() {
@@ -940,6 +1021,9 @@ $(document).ready(function() {
   $('#export').button({
     text: true,
   }).click(exportRange);
+  $('#link').button({
+    text: true,
+  }).click(displayLink);
   $('#prev_finger_touch').button({
     text: true,
   }).click(gotoPrevFTS);
@@ -1009,7 +1093,11 @@ $(document).ready(function() {
   // event is fired whenever the part of the url following the # symbol is
   // changed.
   $(window).bind('hashchange', function() {
-    processArguments(parseWindowHash());
+    if (window.ignoreNextHashChange) {
+      window.ignoreNextHashChange = false;
+    } else {
+      processArguments(parseWindowHash());
+    }
   });
   var args = parseWindowHash();
   processArguments(args);
