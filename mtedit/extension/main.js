@@ -83,6 +83,12 @@ function processArguments(args) {
         path + file + '.jpg',
         'Failed to load ' + file + ' locally.');
   }
+  if (args.start) {
+    setBeginTimestampValue(parseFloat(args.start));
+  }
+  if (args.end) {
+    setEndTimestampValue(parseFloat(args.end));
+  }
 }
 
 function update_range(event, ui) {
@@ -130,6 +136,12 @@ function loadLogObj(obj, isNew) {
   });
   update_range(null, { values: values });
   finger_view_controller.resetZooms();
+  if (args.start) {
+    setBeginTimestampValue(parseFloat(args.start));
+  }
+  if (args.end) {
+    setEndTimestampValue(parseFloat(args.end));
+  }
 }
 
 /**
@@ -481,7 +493,10 @@ function end_stepForward() {
 }
 
 function setBeginTimestamp() {
-  timestamp = $('#input_begin_time').val();
+  setBeginTimestampValue($('#input_begin_time').val());
+}
+
+function setBeginTimestampValue(timestamp) {
   var values = $('#slider').slider('option', 'values');
   var minValue = $('#slider').slider('option', 'min');
   var maxValue = $('#slider').slider('option', 'max');
@@ -493,7 +508,10 @@ function setBeginTimestamp() {
 }
 
 function setEndTimestamp() {
-  timestamp = $('#input_end_time').val();
+  setEndTimestampValue($('#input_end_time').val());
+}
+
+function setEndTimestampValue(timestamp) {
   var values = $('#slider').slider('option', 'values');
   var minValue = $('#slider').slider('option', 'min');
   var maxValue = $('#slider').slider('option', 'max');
