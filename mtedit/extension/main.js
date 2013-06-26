@@ -122,9 +122,17 @@ function processArguments(args) {
     var path = window.location.href;
     path = path.substr(0, path.indexOf('#'));
     path = path.substr(0, path.lastIndexOf('/') + 1);
+    var screenshotFileName;
+    var extension = file.substring(file.length - 4);
+    // Strip .zip and .bz2 for screenshots to align with mtlib conventions.
+    if (extension === '.zip' || extension === '.bz2') {
+      screenshotFileName = file.substring(0, file.length - 4);
+    } else {
+      screenshotFileName = file;
+    }
     loadFileAndScreenshot(
         path + file,
-        path + file + '.jpg',
+        path + screenshotFileName + '.jpg',
         'Failed to load ' + file + ' locally.');
   }
   if (args.start) {
