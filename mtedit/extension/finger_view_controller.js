@@ -491,7 +491,10 @@ FingerViewController.prototype = {
           } else {
             color = '#000';
           }
-          radius = outPressure;
+          radius = 0.5 * fingerState.touchMajor / Math.max(xRes, yRes);
+          if (!radius) {
+            radius = outPressure;
+          }
           if (!radius || radius < 5) {
             radius = 5;
           }

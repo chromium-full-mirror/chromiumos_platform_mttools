@@ -17,14 +17,8 @@
           button.setAttribute('type', 'button');
           button.innerHTML = 'View touch logs';
           button.addEventListener('click', function() {
-            var captureId = /[^0-9]+([0-9]+)/g;
-            var reportId = captureId.exec(document.URL)[1];
-            var extStart = logIndex + logName.length + 1;
-            var extLength = 3;  // Length of 'zip' or 'bz2'
             chrome.runtime.sendMessage({
-              'reportId': reportId,
-              'extension': span.innerHTML.substring(extStart,
-                  extStart + extLength),
+              'reportUrl': span.parentNode.href,
             });
           });
 

@@ -12,12 +12,9 @@ var logname = undefined;
 var LOG_SCREEN = 'screen';
 var LOG_PAD = 'pad';
 
-function getFeedbackUrl(id, extension) {
-  return 'https://feedback.corp.googleusercontent.com/binarydata/report-' +
-      id + '-system_logs.' + extension + '?id=' + id + '&logIndex=0';
-}
-
-function getScreenshotUrl(id) {
+function getScreenshotUrl(reportUrl) {
+  var findId = /id=([0-9]+)/;
+  var id = findId.exec(reportUrl)[1];
   return 'https://feedback.corp.googleusercontent.com/screenshot?id=' + id;
 }
 
@@ -70,8 +67,7 @@ function updateWindowHash(newArgs) {
 
 function processArguments(args) {
   var file = args.file || args.f;
-  var reportId = args.reportId;
-  var extension = args.extension;
+  var reportUrl = args.reportUrl;
   var startTime = args.startTime;
   var endTime = args.endTime;
   var logIndex = args.logIndex;
@@ -116,11 +112,12 @@ function processArguments(args) {
   };
 
   // Load file from feedback report or local server
-  if (reportId && extension) {
+  if (reportUrl) {
+    reportUrl = decodeURIComponent(reportUrl);
     loadFileAndScreenshot(
-        getFeedbackUrl(reportId, extension),
-        getScreenshotUrl(reportId),
-        'Failed to load system logs for report id ' + reportId + '.');
+        reportUrl,
+        getScreenshotUrl(reportUrl),
+        'Failed to load system logs for report url ' + reportUrl + '.');
   } else if (file) {
     var path = window.location.href;
     path = path.substr(0, path.indexOf('#'));
@@ -183,6 +180,7 @@ function loadLogObj(obj, isNew) {
   });
   update_range(null, { values: values });
   finger_view_controller.resetZooms();
+  var args = parseWindowHash();
   if (args.start) {
     setBeginTimestampValue(parseFloat(args.start));
   }
@@ -410,16 +408,16 @@ function convertEntriesToEventStream(obj) {
  * @param {Object} obj Event structure expected by loadLogObj.
  */
 function loadLog(obj) {
-    if (!obj) {
-      alert('Unrecognized input file');
-      return;
-    }
-    json_obj = obj;
-    generateRadioButtons(obj);
-    current_layer = 0;
-    loadLogObj(obj, true);
-    // If obj.isTouchScreen is true, then manually switch to touchscreen mode
-    touchscreenToggle(!!obj.isTouchscreen);
+  if (!obj) {
+    alert('Unrecognized input file');
+    return;
+  }
+  json_obj = obj;
+  generateRadioButtons(obj);
+  current_layer = 0;
+  loadLogObj(obj, true);
+  // If obj.isTouchScreen is true, then manually switch to touchscreen mode
+  touchscreenToggle(!!obj.isTouchscreen);
 }
 
 function convertStrToLog(str) {
