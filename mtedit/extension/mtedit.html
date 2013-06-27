@@ -28,6 +28,8 @@
         <h2 style="display:none" class="pad">Touchpad Activity Viewer</h2>
         <h2 style="display:none" class="screen">Touchscreen Viewer</h2>
         <h3 style="display:none" id="loading">Loading...</h3>
+        <select style="display:none" id="select"></select>
+        <br />
         <div class="screen">
           <input type="checkbox" checked="true" id="paint-style" />
           <label for="paint-style">Paint Style</label>
@@ -90,13 +92,17 @@
         <h2>Load/Save Activity Log</h2>
         <div id="textdiv">
           <h3>From Text File</h3>
-          <button id="export">Export Selected Time Range</button>
-          <button id="link">Create Link</button>
-          <textarea id="text_box">Drag and drop a touchpad/touchscreen log file here.</textarea></div>
+          <button id="export">Export Selected Range</button>
+          <button id="link">Link</button>
+          <button class="screen" id="flag-noise">Flag noise</button>
+          <button class="screen" id="flag-good">Flag good</button>
+          <button class="screen" id="flag-unknown">Flag unknown</button>
+          <button class="screen" id="next-noise">Next noise</button>
+          <textarea id="text_box">Drag and drop a touchpad/touchscreen log file here.</textarea>
+        </div>
         <div id="feedbackupload">
           <h3>From Feedback Report</h3>
           Load from Feedback Report: <input type="file" id="upload"></input>
-          <select id="select"></select>
         </div>
         <br style="clear: both;"/>
       </div>

@@ -239,12 +239,14 @@ GraphController.prototype = {
       ctx.fill();
     }
     if (item.color) {
-      ctx.lineWidth = 1;
+      if (item.thickness) {
+        ctx.lineWidth = item.thickness;
+      }
       ctx.strokeStyle = item.color;
       ctx.stroke();
     }
     if (item.label) {
-      ctx.fillStyle = item.color;
+      ctx.fillStyle = item.labelColor || item.color;
       ctx.fillText(item.label, pt.xPos, pt.yPos);
     }
   },

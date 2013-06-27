@@ -4,6 +4,7 @@
 
 function FingerViewController(inGraph, outGraph, inText, popup, outLockHead) {
   this.entries = [];
+  this.fingerFlags = [];
   this.hardwareProperties = [];
   this.begin = -1;
   this.end = -1;
@@ -22,6 +23,12 @@ FingerViewController.prototype = {
   style: {
     STANDARD: 'STANDARD',
     PAINT: 'Paint',
+  },
+  flag: {
+    NONE: '',
+    GOOD: 'good',
+    NOISE: 'noise',
+    FILTER: 'filter',
   },
   setEntriesLog: function(log, layer) {
     var tmp = log;
@@ -206,6 +213,112 @@ FingerViewController.prototype = {
     this.begin = begin;
     this.end = end;
     this.redraw();
+  },
+  setTouchFlags: function(flagDictionary) {
+    this.fingerFlags = [];
+    // Set annoted 'good' / 'noise' flags last as these are more correct than
+    // automatic results and should be preserved.
+    var importantFlags = [
+      FingerViewController.prototype.flag.GOOD,
+      FingerViewController.prototype.flag.NOISE
+    ];
+    for (var flag in flagDictionary) {
+      var trackingIds = flagDictionary[flag];
+      if (importantFlags.indexOf(flag) === -1) {
+        for (var trackingId in trackingIds) {
+          this.fingerFlags[trackingId] = flag;
+        }
+      }
+    }
+    for (var index in importantFlags) {
+      var flag = importantFlags[index];
+      var trackingIds = flagDictionary[flag];
+      if (trackingIds) {
+        for (var trackingId in trackingIds) {
+          this.fingerFlags[trackingId] = flag;
+        }
+      }
+    }
+  },
+  getTouchFlags: function() {
+    var flagDictionary = {};
+    for (var trackingId in this.fingerFlags) {
+      var flag = this.fingerFlags[trackingId];
+      if (!flagDictionary[flag]) {
+        flagDictionary[flag] = [];
+      }
+      flagDictionary[flag].push(trackingId);
+    }
+    return flagDictionary;
+  },
+  flagTouchPoints: function(value) {
+    var lastEntry = null;
+    for (var i = this.nextHardwareState(this.begin - 1);
+         i < this.end && i !== -1;
+         i = this.nextHardwareState(i)) {
+      var entry = this.entries[i];
+      if (entry.fingers) {
+        for (var j = 0; j < entry.fingers.length; j++) {
+          var isNew = true;
+          var trackingId = entry.fingers[j].trackingId;
+          if (lastEntry !== null) {
+            for (var k = 0; k < lastEntry.fingers.length; k++) {
+              if (lastEntry.fingers[k].trackingId === trackingId) {
+                isNew = false;
+                break;
+              }
+            }
+          }
+          if (isNew) {
+            if (value) {
+              this.fingerFlags[trackingId] = value;
+            } else {
+              delete this.fingerFlags[trackingId];
+            }
+          }
+        }
+      }
+      lastEntry = entry;
+    }
+  },
+  jumpToNextNoise: function() {
+    var self = this;
+    var isNoise = function(hardwareState) {
+      if (hardwareState.fingers) {
+        for (var i = 0; i < hardwareState.fingers.length; i++) {
+          var flag = self.fingerFlags[hardwareState.fingers[i].trackingId];
+          if (flag === FingerViewController.prototype.flag.NOISE ||
+              flag === FingerViewController.prototype.flag.FILTER) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+    var testForNoise = function(value, startIndex) {
+      var currentIndex = startIndex;
+      do {
+        if (isNoise(self.entries[currentIndex]) === value) {
+          return currentIndex;
+        }
+        currentIndex = self.nextHardwareState(currentIndex);
+        if (currentIndex === -1) {
+          currentIndex = self.nextHardwareState(0);
+        }
+      } while (currentIndex !== startIndex);
+      return null;
+    };
+    // Find the next noise
+    var start = testForNoise(true, this.nextHardwareState(this.begin - 1));
+    if (start === null) {  // No noise found.
+      return null;
+    }
+    // Find the next non-noise
+    var end = testForNoise(false, this.nextHardwareState(start));
+    if (end === null) {  // No non-noise found
+      return [0, this.entries.length - 1];
+    }
+    return [start, end];
   },
   setHighlightPopup: function(on) {
     this.inGraph.setHighlightSelected(on);
@@ -499,6 +612,18 @@ FingerViewController.prototype = {
             radius = 5;
           }
         }
+        var thickness = 1;
+        var flag = this.fingerFlags[fingerState.trackingId];
+        if (flag && touchType !== 'move') {
+          thickness = 3;
+          if (flag === FingerViewController.prototype.flag.GOOD) {
+            color = 'green';
+          } else if (flag === FingerViewController.prototype.flag.NOISE) {
+            color = 'red';
+          } else if (flag === FingerViewController.prototype.flag.FILTER) {
+            color = 'blue';
+          }
+        }
         var self = this;
         var circle = {'type': GraphController.CIRCLE,
                       'center': pt,
@@ -506,6 +631,7 @@ FingerViewController.prototype = {
                       'fillColor': fillColor,
                       'radius': radius,
                       'label': label,
+                      'thickness': thickness,
                       'onSelected': function(pageX, pageY) {
                         self.handleEntrySelected(
                             entry, prevEntry, pageX, pageY);

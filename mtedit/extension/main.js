@@ -52,6 +52,17 @@ function updateWindowHash(newArgs) {
     }
   }
 
+  // Replace flags in window hash with current flags
+  var flags = finger_view_controller.getTouchFlags();
+  for (var name in args) {
+    if (name.substring(0, 5) === 'flag.') {
+      delete args[name];
+    }
+  }
+  for (var name in flags) {
+    args['flag.' + name] = flags[name].join('.');
+  }
+
   var argValues = [];
   for (var name in args) {
     argValues.push(name + '=' + args[name]);
@@ -71,6 +82,23 @@ function processArguments(args) {
   var startTime = args.startTime;
   var endTime = args.endTime;
   var logIndex = args.logIndex;
+
+  // We need to set the flags from the original hash before processing the file
+  // as file processing triggers updating the hash from existing flags in
+  // the FingerViewController.
+  var processBeforeLoading = function () {
+    var overrideFlags = false;
+    var flags = {};
+    for (var name in args) {
+      if (name.substring(0, 5) === 'flag.') {
+        overrideFlags = true;
+        flags[name.substring(5)] = args[name].split('.');
+      }
+    }
+    if (overrideFlags) {
+      finger_view_controller.setTouchFlags(flags);
+    }
+  };
 
   // This range selection only matters after we load a file.
   var processAfterLoading = function() {
@@ -96,6 +124,7 @@ function processArguments(args) {
     request.responseType = 'arraybuffer';
     request.addEventListener('load', function() {
       var loadFileAfterImage = function() {
+        processBeforeLoading();
         loadFileContent(request.response, logIndex);
         processAfterLoading();
         doneLoading();
@@ -168,6 +197,9 @@ function loadLogObj(obj, isNew) {
     var endTime = finger_view_controller.getLETimestamp(values[1]);
   }
   finger_view_controller.setEntriesLog(obj, current_layer);
+  if (obj.flags) {
+    finger_view_controller.setTouchFlags(obj.flags);
+  }
   finger_view_controller.initFTS();
   var MAX_SIZE = 30000;
   var min = Math.max(0, finger_view_controller.entries.length - MAX_SIZE);
@@ -893,8 +925,11 @@ function extractAndLoadLog(log, logIndex) {
   logs[LOG_SCREEN] = extractByInterface(LOG_SCREEN);
 
   select.empty();  // Remove old options
+
+  var numOptions = 0;
   $.each(logs, function(type, log) {
     if (log !== null) {
+      numOptions += 1;
       if (logIndex === type || logIndex === undefined) {
         logIndex = type;
         select.append($('<option></option>')
@@ -916,6 +951,7 @@ function extractAndLoadLog(log, logIndex) {
       loadLog(convertStrToLog(logs[type]));
     }
   });
+  select.toggle(numOptions > 1);
 
   // Parse as json and load the first available log or a preselected log.
   if (logIndex !== undefined) {
@@ -959,6 +995,24 @@ function loadFileContent(buffer, logIndex) {
     feedback = bzip2.simple(bz2Array);
   }
   extractAndLoadLog(feedback, logIndex);
+}
+
+function updateFlags(state) {
+  finger_view_controller.flagTouchPoints(state);
+  finger_view_controller.redraw();
+  var flags = finger_view_controller.getTouchFlags();
+  var text = '';
+  for (var flag in flags) {
+    text += '# flag: ' + flag + ' ' + flags[flag].join(',') + '\n';
+  }
+  setTextBoxAndSelect(text);
+}
+
+function jumpToNextNoise() {
+  var values = finger_view_controller.jumpToNextNoise();
+  if (values !== null) {
+    $('#slider').slider('option', 'values', values);
+  }
 }
 
 $(document).ready(function() {
@@ -1030,6 +1084,24 @@ $(document).ready(function() {
   $('#link').button({
     text: true,
   }).click(displayLink);
+  $('#flag-noise').button({
+    text: true,
+  }).click(function() {
+    updateFlags(FingerViewController.prototype.flag.NOISE);
+  });
+  $('#flag-good').button({
+    text: true,
+  }).click(function() {
+    updateFlags(FingerViewController.prototype.flag.GOOD);
+  });
+  $('#flag-unknown').button({
+    text: true,
+  }).click(function() {
+    updateFlags(FingerViewController.prototype.flag.NONE);
+  });
+  $('#next-noise').button({
+    text: true,
+  }).click(jumpToNextNoise);
   $('#prev_finger_touch').button({
     text: true,
   }).click(gotoPrevFTS);
