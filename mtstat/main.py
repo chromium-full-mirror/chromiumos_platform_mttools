@@ -2,7 +2,6 @@
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-
 from mtedit import MTEdit
 from mtlib import Log
 from mtreplay import MTReplay
@@ -11,34 +10,102 @@ from optparse import OptionParser
 
 usage = """Multitouch Statistic Collector
 
-Download latest N feedback reports
-$ %prog -d N
+This tool is used to gather statistics on large amounts of touchpad data from
+feedback reports. Samples are gathered by parsing the log output of the
+gestures library. The gesture library provides the MTStatSample/Set commands to
+create samples.
 
-Run and print statistics
-$ %prog
+Gestures Library API
+--------------------
 
-Randomly select N logs and run
-$ %prog -n N
+For example you can extend a decision tree in the gestures library code with
+calls to:
 
-Search all (or -n N) logs for occurence of TAG and
-serve the search results in MTEdit
-$ %prog -s TAG
+MTStatSample("MyDecision", "CaseA");
+MTStatSample("MyDecision", "CaseB");
+MTStatSample("MyDecision", "CaseC");
+
+Next to string samples you can also sample integers with MTStatSampleInt.
+For example you can sample the number of fingers in each hardware state:
+
+MTStatSampleInt("NumFingers", hwstate.num_fingers);
+
+Sometimes you want to only generate one sample per file, for example to
+count the number of clicks in each file. Call MTStatUpdate[Int] every time
+your value is changed and the last update will be used by MTStat.
+For example every time a click is performed you call the following:
+
+static int num_of_clicks = 0;
+MTStatUpdateInt("NumClicks", ++num_of_clicks);
+
+Preparing MTStat
+----------------
+
+To run on feedback reports you first have to download a bunch of them. MTStat
+does this for you, for example by downloading the latest 1000 reports:
+
+$ %prog -d 1000
+
+Sample Histograms
+------------------
+
+Running mtstat will then generate statistic on how often each of the logged
+cases happened. Optionally you can specify the number of log files to process,
+per default it will always run all downloaded reports:
+
+$ %prog [-n 1000]
+
+The output will be presented as a histogram of how often each case appeared.
+For integer samples with a lot of different values, a bin-based histogram is
+used.
+
+Searching Samples
+-----------------
+
+You can then also search for cases and view their activity log to figure out
+which user activity lead to this decision. For example:
+
+$ %prog -s "MyDecision == CaseC" [-n 100]
+
+When searching integer samples, unequality operators are supported:
+
+$ %prog -s "NumFingers >= 3" [-n 100]
+
+Of course the same thing works on samples made with MTStatUpdate. For example
+to find files with a lot of clicks:
+
+$ %prog -s "NumClicks > 300" [-n 100]
+
+Advanced Search
+---------------
+
+You can search the gestures library log output with regular expressions.
+For example to see if any ERROR messages happen:
+
+$ %prog -r "ERROR:"
+
 """
 
 def main():
   parser = OptionParser(usage=usage)
-  parser.add_option('-d',
+  parser.add_option('-d', '--download',
                     dest='download', default=None,
                     help='download more log files')
-  parser.add_option('-o',
+  parser.add_option('-o', '--offset',
                     dest='offset', default=0,
                     help='offset for downloading log files')
-  parser.add_option('-n',
+  parser.add_option('-n', '--number',
                     dest='number', default=None,
                     help='number of log files to gather stats on')
-  parser.add_option('-s',
+  parser.add_option('-s', '--search',
                     dest='search', default=None,
                     help='search for specific tags')
+  parser.add_option('-l', '--list',
+                    dest='list', action='store_true', default=False,
+                    help='just print list, don\'t view search results')
+  parser.add_option('-r', '--regex',
+                    dest='regex', default=None,
+                    help='search log output for regex')
   (options, args) = parser.parse_args()
 
   stat = MTStat()
@@ -48,25 +115,40 @@ def main():
 
   number = None if options.number is None else int(options.number)
 
-  if options.search:
-    results = stat.Search(options.search, number)
+  if options.search or options.regex:
+    if options.search:
+      results = stat.Search(query=options.search, number=number)
+    else:
+      results = stat.Search(regex=options.regex, number=number)
+
     print "Found occurences in %d files" % len(results)
     print "Serving results, press CTRL-C to abort"
     for filename, entries in results.items():
       print "%d occurences in %s:" % (len(entries), filename)
       for entry in entries:
-        print "    %f" % entry.timestamp
-      first = entries[0]
+        print "    " + entry.line
 
-      replay_results = MTReplay().Replay(Log(first.id))
-      editor = MTEdit()
-      editor.View(replay_results.log, first.timestamp)
-      raw_input("Press Enter to continue...")
+      # display link to MTEdit session
+      if not options.list:
+        first = entries[0]
+        replay_results = MTReplay().Replay(Log(filename))
+        editor = MTEdit()
+
+        # for MTStat results we have
+        editor.View(replay_results.log, first.timestamp)
+        raw_input("Press Enter to continue...")
     return
 
   results = stat.GatherStats(number)
-  for key, (count, ratio) in results.items():
-    print key, '=', count, "(%d%%)" % (ratio * 100)
+  for key, hist in results.items():
+    print "%s:" % key
+    overall_count = sum(hist.values())
+    for value, count in hist.items():
+      percent = int(round(float(count) / float(overall_count) * 100))
+      percent_str = "(" + str(percent) + "%)"
+      graph = "=" * int(round(percent / 2))
+      print "  {0:>6} {1:<6} {2:6} |{3}".format(
+          str(value) + ":", count, percent_str, graph)
 
 if __name__ == '__main__':
   main()
