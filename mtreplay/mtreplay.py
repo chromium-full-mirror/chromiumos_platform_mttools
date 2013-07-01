@@ -5,11 +5,12 @@ from mtedit import MTEdit
 from mtlib.gesture_log import GestureLog
 from mtlib.log import Log
 from mtlib.platform import PlatformDatabase
-from subprocess import Popen
+from subprocess import Popen, PIPE, STDOUT
 from tempfile import NamedTemporaryFile
 from threading import Thread
 import decimal
 import json
+import multiprocessing
 import os
 import sys
 
@@ -67,6 +68,16 @@ class MTReplay(object):
   """ New API for replaying log files """
   def __init__(self):
     self.database = PlatformDatabase()
+
+  def Recompile(self):
+    dir = _GetAbsPath("../")
+    print "Recompiling gestures/libevdev/replay..."
+    process = Popen(["make", "-j", str(multiprocessing.cpu_count()),
+                    "in-place"], cwd=dir, stdout=PIPE, stderr=STDOUT)
+    ret = process.wait()
+    if ret != 0:
+      print process.stdout.read()
+      sys.exit(-1)
 
   def PlatformOf(self, log, debug=False):
     return self.database.FindMatching(log, debug=debug)

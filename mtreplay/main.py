@@ -40,9 +40,13 @@ def main(argv):
   parser.add_option('-v', '--view',
                     dest='view', default=None,
                     help='select output of relay to view')
+  parser.add_option('--gdb',
+                    dest='gdb', action='store_true', default=False,
+                    help='setup gdb session to run replay')
   (options, args) = parser.parse_args()
 
   replay = MTReplay()
+  replay.Recompile()
 
   if len(args) != 1:
     parser.print_help()
@@ -56,7 +60,7 @@ def main(argv):
       print platform.name
     return
 
-  results = replay.Replay(log)
+  results = replay.Replay(log, gdb=options.gdb)
   if results:
     results.View(options.view)
 
