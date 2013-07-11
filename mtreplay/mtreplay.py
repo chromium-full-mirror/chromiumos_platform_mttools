@@ -69,15 +69,26 @@ class MTReplay(object):
   def __init__(self):
     self.database = PlatformDatabase()
 
-  def Recompile(self):
-    dir = _GetAbsPath("../")
+  def Recompile(self, head=False):
+    def SafeExec(args, cwd):
+      print "$", " ".join(args)
+      process = Popen(args, cwd=cwd, stdout=PIPE, stderr=STDOUT)
+      ret = process.wait()
+      if ret != 0:
+        print process.stdout.read()
+        sys.exit(-1)
+
+    gestures_path = _GetAbsPath("../../gestures")
+
+    if head:
+      SafeExec(['git', 'stash'], gestures_path)
+
     print "Recompiling gestures/libevdev/replay..."
-    process = Popen(["make", "-j", str(multiprocessing.cpu_count()),
-                    "in-place"], cwd=dir, stdout=PIPE, stderr=STDOUT)
-    ret = process.wait()
-    if ret != 0:
-      print process.stdout.read()
-      sys.exit(-1)
+    SafeExec(["make", "-j", str(multiprocessing.cpu_count()),
+                    "in-place"], _GetAbsPath("../"))
+
+    if head:
+      SafeExec(['git', 'stash', 'pop'], gestures_path)
 
   def PlatformOf(self, log, debug=False):
     return self.database.FindMatching(log, debug=debug)
