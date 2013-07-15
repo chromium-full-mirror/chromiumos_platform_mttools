@@ -81,7 +81,8 @@ function processArguments(args) {
   var reportUrl = args.reportUrl;
   var startTime = args.startTime;
   var endTime = args.endTime;
-  var logIndex = args.logIndex;
+  var logType = args.logType;
+  var logName = args.logName;
 
   // We need to set the flags from the original hash before processing the file
   // as file processing triggers updating the hash from existing flags in
@@ -125,7 +126,7 @@ function processArguments(args) {
     request.addEventListener('load', function() {
       var loadFileAfterImage = function() {
         processBeforeLoading();
-        loadFileContent(request.response, logIndex);
+        loadFileContent(request.response, logType, logName);
         processAfterLoading();
         doneLoading();
       };
@@ -806,6 +807,7 @@ function convertArrayToString(int_array) {
   return char_array.join('');
 }
 
+// Returns a name-data dictionary object of logs extracted from the tar file.
 function extractActivityLog(tar, type) {
   // a tar file is a sequence of 512 byte blocks. Starting with a header block
   // followed by the contents of that file, repeated for as many files
@@ -850,10 +852,15 @@ function extractActivityLog(tar, type) {
       // store file info in list
       result = new Object();
       result.name = name;
-      if (type === LOG_SCREEN) {
-        result.timestamp = 0;
-      } else {
-        result.timestamp = name_pattern.exec(name)[1];
+      result.timestamp = 0;
+      var timestamp = name_pattern.exec(name);
+      if (timestamp !== null) {
+        result.timestamp = timestamp[1];
+      }
+      if (type === LOG_PAD) {
+        // The normal name for touchpad logs is too long, just use the timestamp
+        // to distinguish between them.
+        result.name = result.timestamp;
       }
       result.offset = header_offset + 512
       result.length = length;
@@ -869,16 +876,25 @@ function extractActivityLog(tar, type) {
   log_list.sort(function(a, b) {
     return a.timestamp < b.timestamp;
   });
-  log = log_list[0];
-  var log_data = new Uint8Array(tar.slice(log.offset, log.offset + log.length));
-  if (type === LOG_SCREEN) {
-    return convertArrayToString(log_data);
-  } else {
-    return (new JXG.Util.Unzip(log_data)).unzip()[0][0];
+  var extracted_logs = {};
+  for (var i = 0; i < log_list.length; i++) {
+    var log = log_list[i];
+    var name = log.name;
+    var log_data =
+        new Uint8Array(tar.slice(log.offset, log.offset + log.length));
+    var extracted_log;
+    if (type === LOG_SCREEN) {
+      extracted_log = convertArrayToString(log_data);
+    } else {
+      extracted_log = (new JXG.Util.Unzip(log_data)).unzip()[0][0];
+    }
+    extracted_logs[name] = extracted_log;
   }
+  return extracted_logs;
 }
 
-function extractAndLoadLog(log, logIndex) {
+function extractAndLoadLog(log, logType, logName) {
+  // Returns a name=>data dictionary object of logs
   var extractByInterface = function(type) {
     var start_index = [
       'hack-33025-touch' + type + '_activity="""\n' +
@@ -905,7 +921,7 @@ function extractAndLoadLog(log, logIndex) {
       }
     }
     if (start_idx === -1) {
-      return null;
+      return {};
     }
 
     var tar_base64 = log.substring(start_idx, end_idx);
@@ -918,48 +934,57 @@ function extractAndLoadLog(log, logIndex) {
   };
 
 
-  var logs = {};
+  var logsByType = {};
   var select = $('#select');
 
-  logs[LOG_PAD] = extractByInterface(LOG_PAD);
-  logs[LOG_SCREEN] = extractByInterface(LOG_SCREEN);
+  logsByType[LOG_PAD] = extractByInterface(LOG_PAD);
+  logsByType[LOG_SCREEN] = extractByInterface(LOG_SCREEN);
 
   select.empty();  // Remove old options
-
   var numOptions = 0;
-  $.each(logs, function(type, log) {
-    if (log !== null) {
+  $.each(logsByType, function(type, logs) {
+    $.each(logs, function(name, data) {
+      var value = type + ': ' + name;  // Assuming ': ' is a valid separator
       numOptions += 1;
-      if (logIndex === type || logIndex === undefined) {
-        logIndex = type;
+      if ((logType === type || logType === undefined) &&
+          (logName === name || logName === undefined)) {
+        logType = type;
+        logName = name;
         select.append($('<option></option>')
-                      .prop('value', type)
+                      .prop('value', value)
                       .prop('selected', 'selected')
-                      .text(type));
+                      .text(value));
       } else {
-        select.append($('<option></option>').prop('value', type).text(type));
+        select.append($('<option></option>')
+                      .prop('value', value)
+                      .text(value));
       }
-    }
+    });
   });
   select.change(function() {
-    var type = $(this).prop('value');
-    if (logs[type] !== null) {
+    var values = $(this).prop('value').split(': ');
+    var type = values[0], name = values[1];
+    if (logsByType[type] !== null && logsByType[type][name] !== undefined) {
       // Update the hash arguments when logs are switched.
       updateWindowHash({
-        'logIndex': type,
+        'logType': type,
+        'logName': name,
       });
-      loadLog(convertStrToLog(logs[type]));
+      loadLog(convertStrToLog(logsByType[type][name]));
     }
   });
   select.toggle(numOptions > 1);
 
   // Parse as json and load the first available log or a preselected log.
-  if (logIndex !== undefined) {
+  if (logType !== undefined &&
+      logName !== undefined &&
+      logsByType[logType][logName] !== undefined) {
     // Keep track in the hash arguments which log we are loading.
     updateWindowHash({
-      'logIndex': logIndex,
+      'logType': logType,
+      'logName': logName,
     });
-    loadLog(convertStrToLog(logs[logIndex]));
+    loadLog(convertStrToLog(logsByType[logType][logName]));
   }
 }
 
@@ -967,7 +992,7 @@ function extractAndLoadLog(log, logIndex) {
  * Loads from a buffer, either from uploaded file or from feedback report urls.
  * @param {ArrayBuffer} buffer Contains the entire file's contents.
  */
-function loadFileContent(buffer, logIndex) {
+function loadFileContent(buffer, logType, logName) {
   var feedback = '';
   var dataArray = new Uint8Array(buffer);
   var unzipper = new JSUnzip({
@@ -982,19 +1007,18 @@ function loadFileContent(buffer, logIndex) {
     feedback = JSInflate.inflate(unzipper.entries[0].data);
   } else {
     var bz2Array = bzip2.array(dataArray);
-    // The bzip2.header method throws an exception if the array does not
-    // represent a valid bz2 file.
+    // The bzip2.header method in bzip2.simple throws an exception if the array
+    // does not represent a valid bz2 file.
     try {
-      bzip2.header(bz2Array);
+      feedback = bzip2.simple(bz2Array);
     } catch (e) {
       // Not a bz2 file, load as a plain file input
       var rawInput = convertArrayToString(dataArray);
       loadLog(convertStrToLog(rawInput));
       return;
     }
-    feedback = bzip2.simple(bz2Array);
   }
-  extractAndLoadLog(feedback, logIndex);
+  extractAndLoadLog(feedback, logType, logName);
 }
 
 function updateFlags(state) {
