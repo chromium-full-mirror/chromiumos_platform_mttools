@@ -69,7 +69,9 @@ class GestureLog(object):
         else:
           events.append(FlingGesture(gesture['vx'], gesture['vy'], start_time,
                                      end_time))
-
+      elif gesture['gestureType'] == 'metrics':
+        # ignore
+        pass
       else:
         print 'Unknown gesture:', repr(gesture)
 
