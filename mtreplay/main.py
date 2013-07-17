@@ -43,6 +43,9 @@ def main(argv):
   parser.add_option('--gdb',
                     dest='gdb', action='store_true', default=False,
                     help='setup gdb session to run replay')
+  parser.add_option('--force', '-f',
+                    dest='force', default=None,
+                    help='force platform for replay')
   (options, args) = parser.parse_args()
 
   replay = MTReplay()
@@ -60,7 +63,7 @@ def main(argv):
       print platform.name
     return
 
-  results = replay.Replay(log, gdb=options.gdb)
+  results = replay.Replay(log, force_platform=options.force, gdb=options.gdb)
   if results:
     results.View(options.view)
 
