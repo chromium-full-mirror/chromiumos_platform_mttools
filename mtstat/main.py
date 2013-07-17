@@ -84,6 +84,23 @@ For example to see if any ERROR messages happen:
 
 $ %prog -r "ERROR:"
 
+Searching for Changed Gestures
+------------------------------
+
+MTStat can also be used to search for changes in the generated gestures
+introduced by changes to the code of the gestures library.
+
+In order to do so make local changes to the gestures library without
+commiting them. Then run:
+
+$ %prog -c [-n 100]
+
+This command will compare to the HEAD version of gestures and present all
+changed gestures.
+
+You can also limit the search to a certain type of gestures:
+
+$ %prog -c -g "ButtonDown" [-n 100]
 """
 
 def main():
@@ -106,6 +123,17 @@ def main():
   parser.add_option('-r', '--regex',
                     dest='regex', default=None,
                     help='search log output for regex')
+  parser.add_option('-g', '--gestures',
+                    dest='gestures', default=None,
+                    help='search log for gestures')
+  parser.add_option('-b', '--bins',
+                    dest='bins', default=10,
+                    help='number of bins for histograms')
+  parser.add_option('-c', '--changes',
+                    dest='changes', action='store_true', default=False,
+                    help='search for changes introduced by ' +
+                         'local code changes to the gestures library')
+
   (options, args) = parser.parse_args()
 
   stat = MTStat()
@@ -115,31 +143,31 @@ def main():
 
   number = None if options.number is None else int(options.number)
 
-  if options.search or options.regex:
-    if options.search:
-      results = stat.Search(query=options.search, number=number)
+  if (options.search or options.regex or options.gestures or
+      options.changes):
+    if options.changes:
+      results = stat.SearchChanges(options.gestures,
+                                   number=number)
     else:
-      results = stat.Search(regex=options.regex, number=number)
+      results = stat.Search(search=options.search, gestures=options.gestures,
+                            regex=options.regex, number=number)
 
     print "Found occurences in %d files" % len(results)
     print "Serving results, press CTRL-C to abort"
-    for filename, entries in results.items():
-      print "%d occurences in %s:" % (len(entries), filename)
-      for entry in entries:
-        print "    " + entry.line
+    for filename, result in results.items():
+      print "%d occurences in %s:" % (len(result.matches), filename)
+      for match in result.matches:
+        print "    ", match
 
       # display link to MTEdit session
       if not options.list:
-        first = entries[0]
-        replay_results = MTReplay().Replay(Log(filename))
-        editor = MTEdit()
-
-        # for MTStat results we have
-        editor.View(replay_results.log, first.timestamp)
+        MTEdit().View(result.log, result.matches[0].timestamp)
         raw_input("Press Enter to continue...")
     return
 
-  results = stat.GatherStats(number)
+
+  bins = int(options.bins)
+  results = stat.GatherStats(number, num_bins=bins)
   for key, hist in results.items():
     print "%s:" % key
     overall_count = sum(hist.values())
