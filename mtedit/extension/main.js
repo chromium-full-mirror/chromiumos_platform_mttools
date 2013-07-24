@@ -239,7 +239,7 @@ function loadLogObj(obj, isNew) {
  *     E: [timestamp] [event_type] [event_code] [event_value] [slot]
  * @return {Object} Event structure expected by loadLogObj.
  */
-function convertEventStreamToEntries(data) {
+function convertEventStreamToEntries(data, bezels) {
   // Clone an object by serializing and parsing it.
   var clone = function(obj) {
     return JSON.parse(JSON.stringify(obj));
@@ -249,6 +249,10 @@ function convertEventStreamToEntries(data) {
   var obj = {
     'entries': [],
     'hardwareProperties': {
+      // TODO(flackr): only add bezel information if touchscreen size matches
+      // the size of an output whose name begins with LVDS, eDP or DSI from
+      // Xorg.0.log.
+      'bezels': bezels,
       'bottom': 1000.0,
       'left': 0.0,
       'right': 2000.0,
@@ -461,10 +465,10 @@ function loadLog(obj) {
   touchscreenToggle(!!obj.isTouchscreen);
 }
 
-function convertStrToLog(str) {
+function convertStrToLog(str, bezels) {
   var obj;
   if (str[0] == '#' || str[0] == 'E') {  // A touchscreen log
-    obj = convertEventStreamToEntries(str);
+    obj = convertEventStreamToEntries(str, bezels);
     obj.isTouchscreen = true;
   } else if (str[0] == '{') {  // A touchpad log
     obj = jQuery.parseJSON(str);
@@ -933,12 +937,43 @@ function extractAndLoadLog(log, logType, logName) {
     return extractActivityLog(tar_file, type);
   };
 
-
   var logsByType = {};
   var select = $('#select');
 
   logsByType[LOG_PAD] = extractByInterface(LOG_PAD);
   logsByType[LOG_SCREEN] = extractByInterface(LOG_SCREEN);
+
+  var bezels;
+  var calibrationFlag = '--touch-calibration=';
+  // Find a line that contains /sbin/session_manager and capture the characters
+  // between the end of that command and the end of the line to get all the
+  // command-line flags passed to the session manager.
+  var findSessionManagerFlags = RegExp('\/sbin\/session_manager[^\n]* ' +
+                                       '-- \/opt\/google\/chrome\/chrome ?' +
+                                       '([^\n]+)\n');
+  var sessionManagerMatches = findSessionManagerFlags.exec(log);
+  if (sessionManagerMatches) {
+    var sessionManagerFlags = sessionManagerMatches[1];
+    // Search for the calibration flag only among these command-line flags
+    var findCalibrationParameters = /--touch-calibration=([0-9,]*)/;
+    var calibrationParameterMatches =
+        findCalibrationParameters.exec(sessionManagerFlags);
+    if (calibrationParameterMatches) {
+      var calibrationParameter = calibrationParameterMatches[1];
+      var parsedBezels = calibrationParameter.split(',');
+      if (parsedBezels.length === 4) {
+        bezels = {
+          left: parseInt(parsedBezels[0]),
+          right: parseInt(parsedBezels[1]),
+          top: parseInt(parsedBezels[2]),
+          bottom: parseInt(parsedBezels[3])
+        };
+      } else {
+        console.error('Wrong number of --touch-calibration parameters: ' +
+            calibrationParameter);
+      }
+    }
+  }
 
   select.empty();  // Remove old options
   var numOptions = 0;
@@ -961,31 +996,28 @@ function extractAndLoadLog(log, logType, logName) {
       }
     });
   });
-  select.change(function() {
-    var values = $(this).prop('value').split(': ');
-    var type = values[0], name = values[1];
-    if (logsByType[type] !== null && logsByType[type][name] !== undefined) {
-      // Update the hash arguments when logs are switched.
+  var loadLogAndUpdateWindowHash = function(type, name) {
+    if (type !== undefined &&
+        name !== undefined &&
+        logsByType[type] !== null &&
+        logsByType[type][name] !== undefined) {
+      // Keep track in the hash arguments which log we are loading.
       updateWindowHash({
         'logType': type,
         'logName': name,
       });
-      loadLog(convertStrToLog(logsByType[type][name]));
+      loadLog(convertStrToLog(logsByType[type][name], bezels));
     }
+  }
+  select.change(function() {
+    var values = $(this).prop('value').split(': ');
+    var type = values[0], name = values[1];
+    loadLogAndUpdateWindowHash(type, name);
   });
   select.toggle(numOptions > 1);
 
   // Parse as json and load the first available log or a preselected log.
-  if (logType !== undefined &&
-      logName !== undefined &&
-      logsByType[logType][logName] !== undefined) {
-    // Keep track in the hash arguments which log we are loading.
-    updateWindowHash({
-      'logType': logType,
-      'logName': logName,
-    });
-    loadLog(convertStrToLog(logsByType[logType][logName]));
-  }
+  loadLogAndUpdateWindowHash(logType, logName);
 }
 
 /**

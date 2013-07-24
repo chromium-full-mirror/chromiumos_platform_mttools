@@ -522,8 +522,20 @@ FingerViewController.prototype = {
               'type': GraphController.LINE,
               'color': '#ccc'});
     if (this.background && this.background.width !== 0) {
-      segs.push({'start': upLeft,
-                 'end': botRight,
+      var start = {'xPos': upLeft.xPos,
+                   'yPos': upLeft.yPos};
+      var end = {'xPos': botRight.xPos,
+                 'yPos': botRight.yPos};
+      // If set, hp.bezels has properties (in hardware touchscreen pixels):
+      //     left, right, top, bottom
+      if (hp.bezels) {
+        start.xPos += hp.bezels.left / xRes;
+        start.yPos += hp.bezels.top / yRes;
+        end.xPos -= hp.bezels.right / xRes;
+        end.yPos -= hp.bezels.bottom / yRes;
+      }
+      segs.push({'start': start,
+                 'end': end,
                  'type': GraphController.IMAGE,
                  'image': this.background});
     }
