@@ -1,0 +1,9 @@
+{
+	"gestures": {
+	},
+	"xorg": {
+		"file": "50-touchpad-cmt.conf",
+		"identifiers": ["CMT for Logitech T620"]
+	},
+	"device_class": "multitouch_mouse"
+}
