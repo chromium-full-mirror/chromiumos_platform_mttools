@@ -1,0 +1,8 @@
+{
+	"gestures": {
+	},
+	"xorg": {
+		"file": "50-touchpad-cmt-falco.conf",
+		"identifiers": ["touchpad falco", "touchpad falco cyapa"]
+	}
+}
