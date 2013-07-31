@@ -435,6 +435,10 @@ FingerViewController.prototype = {
     var hp = this.hardwareProperties;
     var xRes = hp.xResolution;
     var yRes = hp.yResolution;
+    var rel = '';
+    if (entry.relX !== 0 || entry.relY !== 0) {
+      rel = '<br/> rel: (' + entry.relX + ', ' + entry.relY + ')';
+    }
     if (entry.fingers.length == 2) {
       var dx = (entry.fingers[1].positionX -
                 entry.fingers[0].positionX) / xRes;
@@ -477,7 +481,7 @@ FingerViewController.prototype = {
         '<br/>' + 'fingerCount: ' + entry.fingers.length + fingerString +
         '<br/>' + 'touchCount: ' + entry.touchCount +
         '<br/>' + 'button: ' + (entry.buttonsDown ? 'DOWN' : 'UP') +
-        '<br/>' + 'dist: ' + dist;
+        '<br/>' + 'dist: ' + dist + rel;
   },
   handleEntrySelected: function(entry, lastEntry, pageX, pageY) {
     var offsetX = 20;
