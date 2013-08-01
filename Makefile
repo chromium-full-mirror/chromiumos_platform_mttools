@@ -31,6 +31,12 @@ install: replay
 	install -m 644 mtreplay/*.py $(DESTDIR)/mtreplay
 	install mtreplay/replay $(DESTDIR)/mtreplay/replay
 
+	# for each filetype in tests folder
+	mkdir -p $(DESTDIR)/platforms
+	for file in platforms/* ; do \
+		install -D $$file $(DESTDIR)/platforms/; \
+	done
+
 IN_PLACE_DEPS=../libevdev ../gestures mtreplay
 
 setup-in-place:
