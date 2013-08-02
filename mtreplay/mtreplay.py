@@ -4,7 +4,7 @@
 from mtedit import MTEdit
 from mtlib.gesture_log import GestureLog
 from mtlib.log import Log
-from mtlib.platform import PlatformDatabase
+from mtlib.platform import PlatformDatabase, PlatformProperties
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import NamedTemporaryFile
 from threading import Thread
@@ -67,7 +67,14 @@ class ReplayResults(object):
 class MTReplay(object):
   """ New API for replaying log files """
   def __init__(self):
-    self.database = PlatformDatabase()
+    self._database = None
+
+  @property
+  def database(self):
+    if not self._database:
+      self._database = PlatformDatabase()
+    return self._database
+
 
   def Recompile(self, head=False):
     def SafeExec(args, cwd):
@@ -96,7 +103,7 @@ class MTReplay(object):
   def Replay(self, log, override_properties=None, force_platform=None,
              gdb=False):
     if force_platform:
-      platform = self.database.platforms[force_platform]
+      platform = PlatformProperties(force_platform)
     else:
       platform = self.PlatformOf(log)
     if not platform:
