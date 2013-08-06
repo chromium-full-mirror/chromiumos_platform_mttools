@@ -811,6 +811,24 @@ function convertArrayToString(int_array) {
   return char_array.join('');
 }
 
+function setKeyValue(key, value) {
+  if (!window.chrome || !chrome.storage)
+    return;
+  var items = {};
+  items[key] = value;
+  chrome.storage.sync.set(items);
+}
+
+function getValueCallback(key, callback) {
+  if (!window.chrome || !chrome.storage) {
+    setTimeout(callback, 0);
+    return;
+  }
+  chrome.storage.sync.get(key, function(items) {
+    callback(items[key]);
+  });
+}
+
 // Returns a name-data dictionary object of logs extracted from the tar file.
 function extractActivityLog(tar, type) {
   // a tar file is a sequence of 512 byte blocks. Starting with a header block
@@ -938,7 +956,6 @@ function extractAndLoadLog(log, logType, logName) {
   };
 
   var logsByType = {};
-  var select = $('#select');
 
   logsByType[LOG_PAD] = extractByInterface(LOG_PAD);
   logsByType[LOG_SCREEN] = extractByInterface(LOG_SCREEN);
@@ -975,31 +992,25 @@ function extractAndLoadLog(log, logType, logName) {
     }
   }
 
+  var SEPARATOR = ': ';  // Assuming ': ' is a valid separator.
+  var LOG_TYPE_KEY = 'preferrerdLogType';
+  var select = $('#select');
   select.empty();  // Remove old options
   var numOptions = 0;
   $.each(logsByType, function(type, logs) {
     $.each(logs, function(name, data) {
-      var value = type + ': ' + name;  // Assuming ': ' is a valid separator
+      var value = type + SEPARATOR + name;
       numOptions += 1;
-      if ((logType === type || logType === undefined) &&
-          (logName === name || logName === undefined)) {
-        logType = type;
-        logName = name;
-        select.append($('<option></option>')
-                      .prop('value', value)
-                      .prop('selected', 'selected')
-                      .text(value));
-      } else {
-        select.append($('<option></option>')
-                      .prop('value', value)
-                      .text(value));
-      }
+      select.append($('<option></option>')
+                    .prop('value', value)
+                    .text(value));
     });
   });
+
   var loadLogAndUpdateWindowHash = function(type, name) {
     if (type !== undefined &&
         name !== undefined &&
-        logsByType[type] !== null &&
+        logsByType[type] !== undefined &&
         logsByType[type][name] !== undefined) {
       // Keep track in the hash arguments which log we are loading.
       updateWindowHash({
@@ -1007,17 +1018,42 @@ function extractAndLoadLog(log, logType, logName) {
         'logName': name,
       });
       loadLog(convertStrToLog(logsByType[type][name], bezels));
+      select.val(type + SEPARATOR + name);
     }
   }
   select.change(function() {
-    var values = $(this).prop('value').split(': ');
+    var values = $(this).prop('value').split(SEPARATOR);
     var type = values[0], name = values[1];
     loadLogAndUpdateWindowHash(type, name);
+    setKeyValue(LOG_TYPE_KEY, type);
   });
-  select.toggle(numOptions > 1);
+  select.toggle(numOptions > 1);  // Only display select if more than 1 option.
 
-  // Parse as json and load the first available log or a preselected log.
-  loadLogAndUpdateWindowHash(logType, logName);
+  // Load default (first available) log type if no type or name is specified.
+  if (logType === undefined || logName === undefined) {
+    // When loading the default log, check storage to see if there is a
+    // different preferred log type stored, and load that one if available.
+    getValueCallback(LOG_TYPE_KEY, function(storedType) {
+      var type, name;
+      if (storedType !== undefined &&
+          logsByType[storedType] !== undefined) {
+        var keys = Object.keys(logsByType[storedType]);
+        // When a valid type is found, simply load any log of that type.
+        type = storedType;
+        name = keys[0];
+      } else {
+        // No valid log of the stored type available or no store, just load the
+        // first option in select.
+        var values = select.prop('value').split(SEPARATOR);
+        type = values[0];
+        name = values[1];
+      }
+      loadLogAndUpdateWindowHash(type, name);
+    });
+  } else {
+    // Load the preselected log.
+    loadLogAndUpdateWindowHash(logType, logName);
+  }
 }
 
 /**

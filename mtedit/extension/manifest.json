@@ -29,6 +29,7 @@
   ],
   "permissions": [
     "https://feedback.corp.google.com/*",
-    "https://feedback.corp.googleusercontent.com/*"
+    "https://feedback.corp.googleusercontent.com/*",
+    "storage"
   ]
 }
