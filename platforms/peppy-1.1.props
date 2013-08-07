@@ -1,0 +1,9 @@
+{
+        "gestures": {
+        },
+        "xorg": {
+                "file": "50-touchpad-cmt-peppy.conf",
+                "identifiers": ["touchpad peppy", "touchpad peppy cyapa"]
+        }
+}
+
