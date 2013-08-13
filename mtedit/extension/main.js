@@ -1036,7 +1036,8 @@ function extractAndLoadLog(log, logType, logName) {
     getValueCallback(LOG_TYPE_KEY, function(storedType) {
       var type, name;
       if (storedType !== undefined &&
-          logsByType[storedType] !== undefined) {
+          logsByType[storedType] !== undefined &&
+          Object.keys(logsByType[storedType]).length > 0) {
         var keys = Object.keys(logsByType[storedType]);
         // When a valid type is found, simply load any log of that type.
         type = storedType;
