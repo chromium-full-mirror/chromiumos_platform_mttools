@@ -1,0 +1,8 @@
+{
+	"gestures": {
+	},
+	"xorg": {
+		"file": "50-touchpad-cmt-pit.conf",
+		"identifiers": ["touchpad pit atmel"]
+	}
+}
