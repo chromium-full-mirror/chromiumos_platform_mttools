@@ -2,7 +2,7 @@
 	"gestures": {
 	},
 	"xorg": {
-		"file": "50-touchpad-cmt.conf",
+		"file": "40-touchpad-cmt.conf",
 		"identifiers": ["CMT for Apple Magic Mouse"]
 	},
 	"device_class": "multitouch_mouse"
