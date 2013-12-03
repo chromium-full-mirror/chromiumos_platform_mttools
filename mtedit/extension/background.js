@@ -1,11 +1,4 @@
 (function() {
-  chrome.browserAction.onClicked.addListener(function() {
-    console.log('Opening new touch viewer...');
-    chrome.tabs.create({
-      'url': chrome.extension.getURL('mtedit.html'),
-    });
-  });
-
   if (chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener(
         function(request, sender, sendResponse) {
