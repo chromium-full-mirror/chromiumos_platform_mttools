@@ -3,6 +3,6 @@
 	},
 	"xorg": {
 		"file": "50-touchpad-cmt-daisy.conf",
-		"identifiers": ["touchpad daisy", "touchpad daisy cyapa"]
+		"identifiers": ["touchpad daisy cyapa"]
 	}
 }
