@@ -136,6 +136,8 @@ class MTReplay(object):
     # extract from/to times from activity log
     hwstates = filter(lambda e: e["type"] == "hardwareState",
                       activity["entries"])
+    if not hwstates:
+      return None
     trim_from = hwstates[0]["timestamp"]
     trim_to = hwstates[-1]["timestamp"]
 

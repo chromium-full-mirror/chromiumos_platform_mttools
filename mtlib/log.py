@@ -5,6 +5,7 @@
 from gzip import GzipFile
 from mtlib.feedback import FeedbackDownloader
 from StringIO import StringIO
+from cros_remote import CrOSRemote
 import base64
 import bz2
 import imghdr
@@ -20,6 +21,8 @@ import zipfile
 # path for temporary screenshot
 screenshot_filepath = 'extension/screenshot.jpg'
 
+# todo(denniskempin): the whole options thing is ugly when accessed
+# programmatically without OptionParser.
 def Log(source=None, options=None, activity=None, evdev=None):
   """ Load log from feedback url, device ip or local file path.
 
@@ -280,38 +283,11 @@ Yes/No? (Default: No)"""
 class DeviceLog(AbstractLog):
   """ Downloads logs from a running chromebook via scp. """
   def __init__(self, ip, options):
-    self.id_path = os.path.expanduser('~/.ssh/identity')
-    if not os.path.exists(self.id_path):
-      self._SetupIdentity()
+    self.remote = CrOSRemote(ip)
 
     if options.new:
-      self._GenerateLogs(ip)
+      self.remote.Execute('/opt/google/touchpad/tpcontrol log')
 
-    self.activity = self._Download(ip, 'touchpad_activity_log.txt')
-    self.evdev = self._Download(ip, 'cmt_input_events.dat')
+    self.activity = self.remote.Read('/var/log/xorg/touchpad_activity_log.txt')
+    self.evdev = self.remote.Read('/var/log/xorg/cmt_input_events.dat')
     self.system = ''
-
-  def _GenerateLogs(self, ip):
-    cmd = ('ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ' +
-           '-q root@%s /opt/google/touchpad/tpcontrol log') % ip
-    process = subprocess.Popen(cmd.split())
-    process.wait()
-
-  def _Download(self, ip, filename):
-    temp = tempfile.NamedTemporaryFile('r')
-    cmd = ('scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ' +
-           '-q root@%s:/var/log/%s %s')
-    cmd = cmd % (ip, filename, temp.name)
-    process = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
-    process.wait()
-    temp.seek(0)
-    return temp.read()
-
-  def _SetupIdentity(self):
-    source = os.path.expanduser('~/trunk/chromite/ssh_keys/testing_rsa')
-    command = 'cp %s %s && chmod 600 %s' % (source, self.id_path, self.id_path)
-    print identity_message % command
-    response = sys.stdin.readline().strip()
-    if response in ('Yes', 'yes', 'Y', 'y'):
-      print command
-      os.system(command)
