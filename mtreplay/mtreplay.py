@@ -1,4 +1,4 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 from mtedit import MTEdit
@@ -10,9 +10,12 @@ from tempfile import NamedTemporaryFile
 from threading import Thread
 import decimal
 import json
+import logging
 import multiprocessing
 import os
 import sys
+
+default_log = logging.getLogger(__name__)
 
 def _GetAbsPath(path):
   """ Return normalized path relative to this script """
@@ -75,12 +78,12 @@ class MTReplay(object):
       self._database = PlatformDatabase()
     return self._database
 
-
   def Recompile(self, head=False):
     def SafeExec(args, cwd):
-      print "$", " ".join(args)
+      default_log.info("Executing: %s", " ".join(args))
       process = Popen(args, cwd=cwd, stdout=PIPE, stderr=STDOUT)
       ret = process.wait()
+      default_log.info("Process returned: %d", process.returncode)
       if ret != 0:
         print process.stdout.read()
         sys.exit(-1)
@@ -101,12 +104,17 @@ class MTReplay(object):
     return self.database.FindMatching(log, debug=debug)
 
   def Replay(self, log, override_properties=None, force_platform=None,
-             gdb=False):
+             gdb=False, dbg_log=None):
+    dbg_log = dbg_log or default_log
     if force_platform:
+      dbg_log.info("Forced platform: %s", force_platform)
       platform = PlatformProperties(force_platform)
     else:
+      dbg_log.info("Matching platforms...")
       platform = self.PlatformOf(log)
+      dbg_log.info("Platform found: %s", platform.name)
     if not platform:
+      dbg_log.info("Unable to find platform")
       return None
 
     replay = RawReplay(platform.hwprops_file, platform.device_class)
@@ -121,11 +129,12 @@ class MTReplay(object):
       properties.update(override_properties)
 
     replay.Replay(events.name, json.dumps(properties),
-                  debug=True, gdb_mode=gdb)
+                  debug=True, gdb_mode=gdb, dbg_log=dbg_log)
     return ReplayResults(replay)
 
-  def TrimEvdev(self, log, gdb=False):
+  def TrimEvdev(self, log, gdb=False, dbg_log=None):
     """ Trim evdev log to cover same range as activity log. """
+    dbg_log = dbg_log or default_log
     platform = self.PlatformOf(log)
     replay = RawReplay(platform.hwprops_file, platform.device_class)
 
@@ -137,9 +146,11 @@ class MTReplay(object):
     hwstates = filter(lambda e: e["type"] == "hardwareState",
                       activity["entries"])
     if not hwstates:
+      dbg_log.warning("No HardwareStates generated")
       return None
     trim_from = hwstates[0]["timestamp"]
     trim_to = hwstates[-1]["timestamp"]
+    dbg_log.info("Trimming from %f to %f", trim_from, trim_to)
 
     events = NamedTemporaryFile('w', delete=True)
     events.write(log.evdev)
@@ -149,7 +160,7 @@ class MTReplay(object):
 
     replay.Trim(events.name, trim_out.name,
                 trim_from=trim_from, trim_to=trim_to,
-                gdb_mode=gdb)
+                gdb_mode=gdb, dbg_log=dbg_log)
     log.evdev = trim_out.read()
     return log
 
@@ -185,27 +196,29 @@ class RawReplay(object):
     self.activity_log = None
 
   def Trim(self, events_file, trim_out, trim_from=None, trim_to=None,
-           gdb_mode=False):
+           gdb_mode=False, dbg_log=None):
     """ Shorthand for _execute for trimming.
 
     Stores trimed version of events_file in trim_out.
     """
     self._Execute(events_file, None, False, False, False,
-           trim_out, trim_from, trim_to, gdb_mode=gdb_mode)
+           trim_out, trim_from, trim_to, gdb_mode=gdb_mode, dbg_log=dbg_log)
 
-  def Replay(self, events_file, properties=None, debug=False, gdb_mode=False):
+  def Replay(self, events_file, properties=None, debug=False, gdb_mode=False,
+             dbg_log=None):
     """ Shorthand for _execute for replaying.
 
     debug=True/False enables or disables extra logs.
     This method always returns the activity log as a string.
     """
     self._Execute(events_file, properties, debug, debug, True,
-                  gdb_mode=gdb_mode)
+                  gdb_mode=gdb_mode, dbg_log=dbg_log)
     return self.activity_log
 
   def _Execute(self, events_file, properties=None,
          log_evdev=True, log_gestures=True, log_activity=True,
-         trim_out=None, trim_from=None, trim_to=None, gdb_mode=False):
+         trim_out=None, trim_from=None, trim_to=None, gdb_mode=False,
+         dbg_log=None):
     """ Executes a replay process.
 
     The method arguments are translated to
@@ -226,6 +239,8 @@ class RawReplay(object):
     gestures_log_file = None
     activity_log_file = None
     working_dir = os.path.dirname(events_file)
+
+    dbg_log = dbg_log or default_log
 
     # translate arguments to command line parameters
     parameters = [self._exe]
@@ -266,8 +281,10 @@ class RawReplay(object):
     if gdb_mode:
       parameters = ['gdb', '--args'] + parameters
 
+    dbg_log.info("Executing: %s", " ".join(parameters))
     process = Popen(parameters, env=self._env, cwd=working_dir)
     process.wait()
+    dbg_log.info("Process returns: %d", process.returncode)
 
     # close temporary files
     if log_evdev:
