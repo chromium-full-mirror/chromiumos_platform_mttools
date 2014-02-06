@@ -24,6 +24,7 @@ void gestures_log(int level, const char* format, ...) {
 
 // Declared in gestures library. Empty definition here.
 struct GesturesTimer {
+  char __dummy; // http://crbug.com/341508
 };
 
 }  // extern "C"
