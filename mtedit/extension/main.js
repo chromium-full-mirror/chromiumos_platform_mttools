@@ -1066,6 +1066,12 @@ function loadFileContent(buffer, logType, logName) {
   var dataArray = new Uint8Array(buffer);
   var unzipper = new JSUnzip({
     'charCodeAt': function(index) {
+      // Hack to trick JSUnzip that we don't use UTF-8 in
+      // filenames. This means that filenames with multi-byte chars
+      // will be mangled, but that doesn't affect us. We need this b/c
+      // without it, JSUnzip refuses to unzip the file at all.
+      if (index == 7)
+        return 0;
       return dataArray[index];
     },
   });
