@@ -155,7 +155,7 @@ class GesturesDiffMatch(GesturesMatch):
 
 
 class MTStat(object):
-  def SearchChanges(self, type=None, number=None, parallel=True):
+  def SearchChanges(self, type=None, number=None, platform=None, parallel=True):
     """ Search for changed gestures.
 
     This command will compare the gestures output of the HEAD version of
@@ -163,7 +163,7 @@ class MTStat(object):
     Optionally the type of gestures to look at can be specified by 'type'
     """
     engine = QueryEngine()
-    files = engine.SelectFiles(number)
+    files = engine.SelectFiles(number, platform)
 
     MTReplay().Recompile(head=True)
     gestures_query = GesturesQuery(type, False)
@@ -176,7 +176,7 @@ class MTStat(object):
     return engine.Execute(files, diff_queries, parallel=parallel)
 
   def Search(self, search=None, gestures=None, regex=None,
-             number=None, parallel=True):
+             number=None, platform=None, parallel=True):
     """ Search for occurences of a specific tag or regex.
 
     Specify either a 'search' or a 'regex'. Search queries are formatted
@@ -192,7 +192,7 @@ class MTStat(object):
     for each file.
     """
     engine = QueryEngine()
-    files = engine.SelectFiles(number)
+    files = engine.SelectFiles(number, platform)
 
     if search:
       query = MTStatQuery(search, True)
@@ -205,13 +205,13 @@ class MTStat(object):
 
     return engine.Execute(files, query, parallel=parallel)
 
-  def GatherStats(self, number=None, parallel=True, num_bins=10):
+  def GatherStats(self, number=None, platform=None, parallel=True, num_bins=10):
     """ Gathers stats on feedback reports.
 
     Returns a dictionary with a histogram for each recorded key.
     """
     engine = QueryEngine()
-    files = engine.SelectFiles(number)
+    files = engine.SelectFiles(number, platform)
     results = engine.Execute(files, MTStatQuery(), parallel=parallel)
 
     # gather values for each key in a list

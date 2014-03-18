@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 from mtlib.log import FeedbackDownloader, FeedbackLog, Log
 from mtreplay import MTReplay
+import fnmatch
 import json
 import multiprocessing
 import os
@@ -142,12 +143,24 @@ class QueryEngine(object):
 
     return result_dict
 
-  def SelectFiles(self, number):
+  def SelectFiles(self, number, platform=None):
     """ Returns a random selection of files from the pool """
     # list all log files
     files = [os.path.abspath(os.path.join(log_dir, f))
              for f in os.listdir(log_dir)
              if f.isdigit()]
+
+    if platform:
+      print "Filtering files by platform. This may take a while."
+      replay = MTReplay()
+      pool = multiprocessing.Pool()
+      platforms = pool.map(GetPlatformSubprocess, files)
+      pool.terminate()
+
+      filtered = filter(lambda (f, p): p and fnmatch.fnmatch(p, platform),
+                        platforms)
+      files = map(lambda (f, p): f, filtered)
+      print "found", len(files), "log files matching", platform
 
     # randomly select subset of files
     if number is not None:
@@ -206,6 +219,15 @@ class QueryEngine(object):
     else:
       results = map(DownloadFileSubprocess, report_ids)
 
+def GetPlatformSubprocess(filename):
+  replay = MTReplay()
+  log = Log(filename)
+  detected_platform = replay.PlatformOf(log)
+  if detected_platform:
+    print filename + ": " + detected_platform.name
+    return filename, detected_platform.name
+  else:
+    return filename, None
 
 def ExecuteSingleSubprocess(args):
   """ Wrapper for subprocesses to run ExecuteSingle """

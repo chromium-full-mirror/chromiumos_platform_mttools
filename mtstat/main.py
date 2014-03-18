@@ -114,6 +114,9 @@ def main():
   parser.add_option('-n', '--number',
                     dest='number', default=None,
                     help='number of log files to gather stats on')
+  parser.add_option('-p', '--platform',
+                    dest='platform', default=None,
+                    help='only use log files from specified platform')
   parser.add_option('-s', '--search',
                     dest='search', default=None,
                     help='search for specific tags')
@@ -147,10 +150,11 @@ def main():
       options.changes):
     if options.changes:
       results = stat.SearchChanges(options.gestures,
-                                   number=number)
+                                   number=number, platform=options.platform)
     else:
       results = stat.Search(search=options.search, gestures=options.gestures,
-                            regex=options.regex, number=number)
+                            regex=options.regex, number=number,
+                            platform=options.platform)
 
     print "Found occurences in %d files" % len(results)
     print "Serving results, press CTRL-C to abort"
@@ -167,7 +171,7 @@ def main():
 
 
   bins = int(options.bins)
-  results = stat.GatherStats(number, num_bins=bins)
+  results = stat.GatherStats(number, platform=options.platform, num_bins=bins)
   for key, hist in results.items():
     print "%s:" % key
     overall_count = sum(hist.values())
