@@ -9,6 +9,7 @@ to chromebooks and run remote commands, download or upload files.
 
 import os
 import subprocess
+import sys
 import tempfile
 
 identity_message = """\
@@ -20,7 +21,7 @@ Yes/No? (Default: No)"""
 
 class CrOSRemote(object):
   def __init__(self, ip):
-    self.id_path = os.path.expanduser('~/.ssh/identity')
+    self.id_path = os.path.expanduser('~/.ssh/id_rsa')
     if not os.path.exists(self.id_path):
       self._SetupIdentity()
     self.ip = ip
@@ -62,7 +63,7 @@ class CrOSRemote(object):
     ret = process.wait()
     if ret:
       if verbose:
-        print "Command returned %d: %s" % (ret, command)
+        print "Command returned %d: %s" % (ret, " ".join(command))
       return False
     return True
 
