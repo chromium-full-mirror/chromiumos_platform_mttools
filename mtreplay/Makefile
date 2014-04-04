@@ -4,6 +4,8 @@
 
 include common.mk
 
+CPPFLAGS += -std=gnu++11
+
 all: CXX_BINARY(replay)
 clean: CLEAN(replay)
 tests: CXX_BINARY(tests)

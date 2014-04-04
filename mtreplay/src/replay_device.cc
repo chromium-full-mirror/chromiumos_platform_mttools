@@ -4,6 +4,7 @@
 
 #include <replay_device.h>
 
+#include <assert.h>
 #include <cmath>
 
 #include "gestures_mock.h"
