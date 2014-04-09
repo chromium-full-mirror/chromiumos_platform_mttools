@@ -55,6 +55,26 @@ class PlatformProperties(object):
     self.y_res = int(hwprops['yResolution'])
 
   def _ParseEvdevLog(self, evdev_data):
+    # Look for embedded hwproperties in header. Format:
+    # absinfo: axis min max 0 0 res
+    abs_regex = 5 * ' ([0-9]+)'
+    xregex = re.compile('# absinfo: 53' + abs_regex)
+    xmatch = xregex.search(evdev_data);
+    self.x_min = int(xmatch.group(1))
+    self.x_max = int(xmatch.group(2))
+    self.x_res = int(xmatch.group(5))
+
+    yregex = re.compile('# absinfo: 54' + abs_regex)
+    ymatch = yregex.search(evdev_data);
+    self.y_min = int(ymatch.group(1))
+    self.y_max = int(ymatch.group(2))
+    self.y_res = int(ymatch.group(5))
+
+    axis_regex = re.compile('# absinfo: ([0-9]+)')
+    for match in axis_regex.finditer(evdev_data):
+      self.has_axis.append(int(match.group(1)))
+
+    # look for axes used in the log itself.
     # The format of ABS (0003) reports is:
     # timestamp 0003 axis value
     report_regex = re.compile(' 0003 ([0-9a-f]{4}) ([0-9a-f]+)')
@@ -63,17 +83,17 @@ class PlatformProperties(object):
       if axis not in self.required_axis:
         self.required_axis.append(axis)
 
+
   def _ParseHWProperties(self, data):
     """ Parse x and y dimensions and resolution from hwprops file """
-    xregex = re.compile('A: 35 ([0-9\-]+) ([0-9\-]+) ([0-9\-]+) ' +
-                        '([0-9\-]+) ([0-9\-]+)')
+    abs_regex = 5 * ' ([0-9\-]+)'
+    xregex = re.compile('A: 35' + abs_regex)
     xmatch = xregex.search(data);
     self.x_min = int(xmatch.group(1))
     self.x_max = int(xmatch.group(2))
     self.x_res = int(xmatch.group(5))
 
-    yregex = re.compile('A: 36 ([0-9\-]+) ([0-9\-]+) ([0-9\-]+) ' +
-                        '([0-9\-]+) ([0-9\-]+)')
+    yregex = re.compile('A: 36' + abs_regex)
     ymatch = yregex.search(data);
     self.y_min = int(ymatch.group(1))
     self.y_max = int(ymatch.group(2))
