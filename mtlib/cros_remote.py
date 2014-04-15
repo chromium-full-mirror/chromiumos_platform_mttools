@@ -27,13 +27,12 @@ class CrOSRemote(object):
     self.ip = ip
 
   def Execute(self, command, cwd=None, verbose=False):
-    if cwd:
-      command = "cd \"%s\" && %s" % (cwd, command)
-    cmd = ('ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ' +
-           '-q -t root@%s') % (self.ip)
-    cmd = cmd.split()
-    cmd.append(command)
+    cmd = self._BuildCommand(command, cwd)
     return self._Exec(cmd, verbose)
+
+  def ReadCommand(self, command, cwd=None, verbose=False):
+    cmd = self._BuildCommand(command, cwd)
+    return self._GetCommandOutput(cmd, verbose)
 
   def Read(self, filename):
     temp = tempfile.NamedTemporaryFile('r')
@@ -55,6 +54,15 @@ class CrOSRemote(object):
     cmd = cmd % (self.ip, temp.name, filename)
     self._Exec(cmd.split())
 
+  def _BuildCommand(self, command, cwd=None):
+    if cwd:
+      command = "cd \"%s\" && %s" % (cwd, command)
+    cmd = ('ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ' +
+           '-q -t root@%s') % (self.ip)
+    cmd = cmd.split()
+    cmd.append(command)
+    return cmd
+
   def _Exec(self, command, verbose=False):
     if verbose:
       process = subprocess.Popen(command)
@@ -66,6 +74,17 @@ class CrOSRemote(object):
         print "Command returned %d: %s" % (ret, " ".join(command))
       return False
     return True
+
+  def _GetCommandOutput(self, command, verbose=False):
+    process = subprocess.Popen(command, stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT)
+    ret = process.wait()
+    if ret:
+      if verbose:
+        print process.stdout.read()
+        print "Command returned %d: %s" % (ret, " ".join(command))
+      return False
+    return process.stdout.read()
 
   def _SetupIdentity(self):
     source = os.path.expanduser('~/trunk/chromite/ssh_keys/testing_rsa')

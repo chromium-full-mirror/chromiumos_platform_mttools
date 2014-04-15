@@ -282,10 +282,10 @@ Yes/No? (Default: No)"""
 
 class DeviceLog(AbstractLog):
   """ Downloads logs from a running chromebook via scp. """
-  def __init__(self, ip, options):
+  def __init__(self, ip, options=None, new=False):
     self.remote = CrOSRemote(ip)
 
-    if options.new:
+    if new or (options and options.new):
       self.remote.Execute('/opt/google/touchpad/tpcontrol log')
 
     self.activity = self.remote.Read('/var/log/xorg/touchpad_activity_log.txt')

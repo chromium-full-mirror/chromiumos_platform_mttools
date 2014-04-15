@@ -4,7 +4,7 @@
 # found in the LICENSE file.
 
 from mtreplay import MTReplay
-from mtlib import Log
+from mtlib import Log, PlatformDatabase
 from optparse import OptionParser
 import sys
 
@@ -46,7 +46,14 @@ def main(argv):
   parser.add_option('--force', '-f',
                     dest='force', default=None,
                     help='force platform for replay')
+  parser.add_option('--add-platform', '-a',
+                    dest='add', default=None,
+                    help='add platform of device to database')
   (options, args) = parser.parse_args()
+
+  if options.add:
+    PlatformDatabase.RegisterPlatformFromDevice(options.add)
+    return
 
   replay = MTReplay()
   replay.Recompile()
