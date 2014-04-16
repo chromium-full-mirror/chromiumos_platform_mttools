@@ -50,9 +50,10 @@ class PlatformProperties(object):
       self._UpdateDimensions()
     elif log:
       self.name = ''
-      self._ParseActivityLog(log.activity)
       if log.evdev:
         self._ParseEvdevLog(log.evdev)
+      self._ParseActivityLog(log.activity)
+
 
   def _ParseActivityLog(self, activity_data):
     """ Parse property information from an activity log """
@@ -303,31 +304,38 @@ class PlatformDatabase(object):
       print " cros deploy $DEVICE_IP inputcontrol"
       return None
 
-    # Asks user to select xorg identifiers from a file
-    def SelectXorgIDs(xorg_file):
+    xorg_files = [
+      "/etc/X11/xorg.conf.d/60-touchpad-cmt-*.conf",
+      "/etc/X11/xorg.conf.d/50-touchpad-cmt-*.conf",
+      "/etc/X11/xorg.conf.d/40-touchpad-cmt.conf"
+    ]
+
+    for pattern in xorg_files:
+      # find filename of xorg configuration file
+      xorg_file = remote.ReadCommand("ls " + pattern, verbose=False)
+      if not xorg_file:
+        continue
+      xorg_file = xorg_file.strip()
+
+      # extract identifiers
       print "Selecting Xorg identifiers from", xorg_file
       conf = remote.Read(xorg_file)
-      ids = []
-      for match in re.finditer("Identifier\s+\"([a-zA-Z0-9 ]+)\"", conf):
-        ids.append(match.group(1))
+      all_ids = []
+      for match in re.finditer("Identifier\s+\"([a-zA-Z0-9-_ ]+)\"", conf):
+        all_ids.append(match.group(1))
 
-      idxs = UserSelection(ids, "Which xorg identifiers apply to this device?",
+      # ask user to select
+      idxs = UserSelection(all_ids,
+                           "Which xorg identifiers apply to this device?",
                            allow_multi=True, allow_zero=True)
-      return [ids[i] for i in idxs]
+      ids = [all_ids[i] for i in idxs]
+      if ids:
+        break
 
-    # first ask user for xorg identifiers from platform specific file,
-    # then for identifiers from generic config file.
-    xorg_file = remote.ReadCommand(
-        "ls /etc/X11/xorg.conf.d/50-touchpad-cmt-*",
-        verbose=True).strip()
-    ids = SelectXorgIDs(xorg_file)
     if not ids:
-      xorg_file = "/etc/X11/xorg.conf.d/40-touchpad-cmt.conf"
-      ids = SelectXorgIDs(xorg_file)
-      if not ids:
-        print "Please configure the platform properties manually"
-        xorg_file = "todo: add correct xorg conf file"
-        ids = ["todo: add correct xorg identifier"]
+      print "Please configure the platform properties manually"
+      xorg_file = "todo: add correct xorg conf file"
+      ids = ["todo: add correct xorg identifier"]
 
     ids_string = "[" + ", ".join(["\"%s\"" % id for id in ids]) + "]"
     xorg_file = os.path.basename(xorg_file)
@@ -352,7 +360,7 @@ class PlatformDatabase(object):
 
 def UserSelection(list, msg, allow_multi=False, allow_zero=False):
   idx = [0]
-  if len(list) == 1:
+  if len(list) == 1 and not allow_zero:
     return [0] if allow_multi else 0
 
   # repeat until user made a valid selection
