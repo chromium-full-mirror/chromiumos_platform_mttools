@@ -1,0 +1,10 @@
+{
+  "gestures": {
+  },
+  "xorg": {
+    "file": "50-touchpad-cmt-glimmer.conf",
+    "identifiers": ["touchpad glimmer"]
+  },
+  "ignore": [
+  ]
+}
