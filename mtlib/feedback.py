@@ -101,6 +101,16 @@ class FeedbackDownloader():
     query = urllib.urlencode({"id": id, "logIndex": "0"})
     url = ("https://feedback.corp.googleusercontent.com/binarydata/%s?%s" %
            (logfile, query))
+
+    print "Feedback downloads are currently not supported."
+    print "Please manually download this file:"
+    print "   ", url
+    print "Then pass the file name '%s' as a parameter instead. e.g.:" % logfile
+    print "     mtedit", logfile
+    print "     mtreplay", logfile
+    print "     touchtests testname -c", logfile
+    sys.exit(1)
+
     report = self._GetAndUpdateCachedFile(id + ".zip", url)
     if "<html>" in report:
       print "Received a website, you have been logged out."
