@@ -21,8 +21,14 @@ import zipfile
 # path for temporary screenshot
 screenshot_filepath = 'extension/screenshot.jpg'
 
-# todo(denniskempin): the whole options thing is ugly when accessed
-# programmatically without OptionParser.
+class Options:
+  def __init__(self, download=False, new=False, screenshot=False,
+               evdev=None):
+    self.download = download
+    self.new = new
+    self.screenshot = screenshot
+    self.evdev = evdev
+
 def Log(source=None, options=None, activity=None, evdev=None):
   """ Load log from feedback url, device ip or local file path.
 
@@ -30,18 +36,22 @@ def Log(source=None, options=None, activity=None, evdev=None):
   source can be either an ip address to a device from which to
   download, a url pointing to a feedback report to pull or a filename.
   """
+  if not options:
+    options = Options()
+
   if source:
     if os.path.exists(source):
       if source.endswith('.zip') or source.endswith('.bz2'):
-        return FeedbackLog(source, options)
-      return FileLog(source, options)
+        return FeedbackLog(source)
+      return FileLog(source, options.evdev)
     else:
       match = re.search('Report/([0-9]+)', source)
       if match:
-        return FeedbackLog(match.group(1), options)
+        return FeedbackLog(match.group(1), options.screenshot,
+                           options.download)
       else:
         # todo add regex and error message
-        return DeviceLog(source, options)
+        return DeviceLog(source, options.new)
 
   if activity or evdev:
     log = AbstractLog()
@@ -65,9 +75,9 @@ class AbstractLog(object):
   possibly a screenshot, which can be saved to disk all together.
   """
   def __init__(self):
-    self.activity = None
-    self.evdev = None
-    self.system = None
+    self.activity = ''
+    self.evdev = ''
+    self.system = ''
     self.image = None
 
   def SaveAs(self, filename):
@@ -89,13 +99,12 @@ class FileLog(AbstractLog):
 
   evdev or system logs are optional.
   """
-  def __init__(self, filename, options):
+  def __init__(self, filename, evdev=None):
+    AbstractLog.__init__(self)
+
     self.activity = open(filename).read()
-    self.evdev = ''
-    self.system = ''
-    self.image = None
-    if options and options.evdev:
-      self.evdev = open(options.evdev).read()
+    if evdev:
+      self.evdev = open(evdev).read()
     elif os.path.exists(filename + '.evdev'):
       self.evdev = open(filename + '.evdev').read()
     if os.path.exists(filename + '.system'):
@@ -110,14 +119,12 @@ class FeedbackLog(AbstractLog):
 
   Downloads logs and (possibly) screenshot from a feedback id or file name
   """
-  def __init__(self, id_or_filename, options=None, force_latest=None):
-    self.image = None
+  def __init__(self, id_or_filename, screenshot=False, download=False,
+               force_latest=None):
+    AbstractLog.__init__(self)
     self.force_latest = force_latest
-    self.try_screenshot = options and options.screenshot
+    self.try_screenshot = screenshot
     self.report = None
-    self.system = None
-    self.activity = None
-    self.evdev = None
 
     if id_or_filename.endswith('.zip') or id_or_filename.endswith('.bz2'):
       self.report = open(id_or_filename).read()
@@ -139,9 +146,8 @@ class FeedbackLog(AbstractLog):
       self._ExtractLogFiles()
 
     # Only write to screenshot.jpg if we will be viewing the screenshot
-    if options and not options.download and self.image:
+    if not download and self.image:
       file(screenshot_filepath, 'w').write(self.image)
-
 
   def _GetLatestFile(self, match, tar):
     # find file name containing match with latest timestamp
@@ -152,7 +158,6 @@ class FeedbackLog(AbstractLog):
       print 'Tar file contents:', tar.getnames()
       sys.exit(-1)
     return tar.extractfile(names[-1])
-
 
   def _ExtractSystemLog(self):
     if self.report[0:2] == 'BZ':
@@ -283,13 +288,11 @@ Yes/No? (Default: No)"""
 
 class DeviceLog(AbstractLog):
   """ Downloads logs from a running chromebook via scp. """
-  def __init__(self, ip, options=None, new=False):
+  def __init__(self, ip, new=False):
+    AbstractLog.__init__(self)
     self.remote = CrOSRemote(ip)
 
-    if new or (options and options.new):
+    if new:
       self.remote.Execute('/opt/google/touchpad/tpcontrol log')
-
     self.activity = self.remote.Read('/var/log/xorg/touchpad_activity_log.txt')
     self.evdev = self.remote.Read('/var/log/xorg/cmt_input_events.dat')
-    self.system = ''
-    self.image = None
