@@ -5,6 +5,7 @@
 
 from mtedit import MTEdit
 from mtlib import Log
+from mtlib.feedback import FeedbackDownloader
 from optparse import OptionParser
 import sys
 
@@ -49,6 +50,9 @@ def main(argv):
   parser.add_option('-c', '--screenshot',
                     dest='screenshot', action='store_true', default=False,
                     help='Force an attempt to find and download a screenshot.')
+  parser.add_option('--login',
+                    dest='login', action='store_true', default=False,
+                    help='Force (re-)login to feedback.corp.google.com')
   (options, args) = parser.parse_args()
 
   editor = MTEdit(persistent=options.persistent)
@@ -56,6 +60,9 @@ def main(argv):
   if options.serve:
     editor.Serve()
     return
+
+  if options.login:
+    FeedbackDownloader(force_login=True)
 
   if len(args) != 1:
     parser.print_help()

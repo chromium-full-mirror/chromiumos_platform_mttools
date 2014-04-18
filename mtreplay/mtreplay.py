@@ -112,10 +112,10 @@ class MTReplay(object):
     else:
       dbg_log.info("Matching platforms...")
       platform = self.PlatformOf(log)
-      dbg_log.info("Platform found: %s", platform.name)
     if not platform:
       dbg_log.info("Unable to find platform")
       return None
+    dbg_log.info("Platform found: %s", platform.name)
 
     replay = RawReplay(platform.hwprops_file, platform.device_class)
 
@@ -132,10 +132,20 @@ class MTReplay(object):
                   debug=True, gdb_mode=gdb, dbg_log=dbg_log)
     return ReplayResults(replay)
 
-  def TrimEvdev(self, log, gdb=False, dbg_log=None):
+  def TrimEvdev(self, log, force_platform=None, gdb=False, dbg_log=None):
     """ Trim evdev log to cover same range as activity log. """
     dbg_log = dbg_log or default_log
-    platform = self.PlatformOf(log)
+    if force_platform:
+      dbg_log.info("Forced platform: %s", force_platform)
+      platform = PlatformProperties(force_platform)
+    else:
+      dbg_log.info("Matching platforms...")
+      platform = self.PlatformOf(log, True)
+    if not platform:
+      dbg_log.info("Unable to find platform")
+      return None
+    dbg_log.info("Platform found: %s", platform.name)
+
     replay = RawReplay(platform.hwprops_file, platform.device_class)
 
     # parse activity_log

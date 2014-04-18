@@ -130,12 +130,13 @@ class FeedbackLog(AbstractLog):
     else:
       self.downloader = FeedbackDownloader()
       self.report = self.downloader.DownloadSystemLog(id_or_filename)
-      if self.report:
-        self._ExtractSystemLog()
-      if self.system:
-        self._ExtractLogFiles()
       if self.try_screenshot:
         self.image = self.downloader.DownloadScreenshot(id_or_filename)
+
+    if self.report:
+      self._ExtractSystemLog()
+    if self.system:
+      self._ExtractLogFiles()
 
     # Only write to screenshot.jpg if we will be viewing the screenshot
     if options and not options.download and self.image:
@@ -291,3 +292,4 @@ class DeviceLog(AbstractLog):
     self.activity = self.remote.Read('/var/log/xorg/touchpad_activity_log.txt')
     self.evdev = self.remote.Read('/var/log/xorg/cmt_input_events.dat')
     self.system = ''
+    self.image = None

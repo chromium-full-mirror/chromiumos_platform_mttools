@@ -7,6 +7,7 @@ import getpass
 import imghdr
 import os
 import os.path
+import re
 import sys
 import urllib
 import urllib2
@@ -26,7 +27,9 @@ if not os.path.exists(log_cache_dir):
   os.mkdir(log_cache_dir)
 
 class FeedbackDownloader():
-  def __init__(self):
+  def __init__(self, force_login=False):
+    if force_login and os.path.exists(cookies_file):
+      os.remove(cookies_file)
     # setup cookies file and url opener
     self.cookies = cookielib.MozillaCookieJar(cookies_file)
     if os.path.exists(cookies_file):
@@ -39,9 +42,9 @@ class FeedbackDownloader():
     username = getpass.getuser()
 
     # check if already logged in
-    url = "https://login.corp.google.com/"
+    url = "https://feedback.corp.google.com"
     data = self.opener.open(url).read()
-    if username in data:
+    if "loginForm" not in data:
       return
 
     # ask for credentials
@@ -50,12 +53,22 @@ class FeedbackDownloader():
     sys.stdout.write("OTP: ")
     otp = sys.stdin.readline().strip()
 
-    # execute login by posting userdata to login.corp.google.com
-    values = {'u': username, 'pw': password, 'otp': otp}
-    query = urllib.urlencode(values)
-    url = "https://login.corp.google.com/login?ssoformat=CORP_SSO"
-    result = self.opener.open(url, query).read()
+    values = {
+      'u': username,
+      'pw': password,
+      'otp': otp
+    }
 
+    # extract hidden form values
+    regex = ("<input type=\"hidden\" id=\"([^\"]*)\" " +
+             "name=\"([^\"]*)\" value=\"([^\"]*)\"/>")
+    for match in re.finditer(regex, data):
+      values[match.group(2)] = match.group(3)
+
+    # execute login by posting userdata to login.corp.google.com
+    query = urllib.urlencode(values)
+    url = ("https://login.corp.google.com/login")
+    result = self.opener.open(url, query).read()
     # check if the result displays error
     if "error" in result >= 0:
       print "Login failed"
@@ -89,6 +102,11 @@ class FeedbackDownloader():
     url = ("https://feedback.corp.googleusercontent.com/binarydata/%s?%s" %
            (logfile, query))
     report = self._GetAndUpdateCachedFile(id + ".zip", url)
+    if "<html>" in report:
+      print "Received a website, you have been logged out."
+      print "Please re-login by running:"
+      print "   mtedit --login"
+      return None
     if not report or (report[0:2] != "BZ" and report[0:2] != "PK"):
       print "Report does not include log files at %s" % url
       return None
