@@ -119,52 +119,50 @@ bool PropProvider::Load(const std::string& data) {
     return false;
   }
 
-  if (root->GetType() != Value::TYPE_DICTIONARY) {
+  base::DictionaryValue* dict = NULL;
+  if (!root->GetAsDictionary(&dict)) {
     std::cerr << "Root object has to be a dictionary" << std::endl;
     return false;
   }
 
-  DictionaryValue* dict = static_cast<DictionaryValue*>(root);
-
-  typedef DictionaryValue::key_iterator iter_t;
-  for (iter_t iter = dict->begin_keys(); iter != dict->end_keys(); ++iter) {
-    Value* value;
-
-    dict->GetWithoutPathExpansion(*iter, &value);
+  for (base::DictionaryValue::Iterator iter(*dict); !iter.IsAtEnd();
+       iter.Advance()) {
+    const std::string& key = iter.key();
+    const Value& value = iter.value();
     std::string stringVal;
-    switch (value->GetType()) {
+    switch (value.GetType()) {
     case Value::TYPE_INTEGER: {
       int intVal;
-      value->GetAsInteger(&intVal);
+      value.GetAsInteger(&intVal);
       stringVal = replay_lexical_cast<std::string>(intVal);
       break;
     }
     case Value::TYPE_BOOLEAN: {
       bool boolVal;
-      value->GetAsBoolean(&boolVal);
+      value.GetAsBoolean(&boolVal);
       stringVal = replay_lexical_cast<std::string>(boolVal);
       break;
     }
     case Value::TYPE_DOUBLE: {
       double doubleVal;
-      value->GetAsDouble(&doubleVal);
+      value.GetAsDouble(&doubleVal);
       stringVal = replay_lexical_cast<std::string>(doubleVal);
       break;
     }
     case Value::TYPE_STRING: {
-      value->GetAsString(&stringVal);
+      value.GetAsString(&stringVal);
       break;
     }
     default:
-      std::cerr << "Invalid property type: " << *iter << std::endl;
+      std::cerr << "Invalid property type: " << key << std::endl;
       std::cerr << "Expected Integer, Boolean, Double or String" << std::endl;
       return false;
     }
 
-    if (properties_.find(*iter) == properties_.end()) {
-      properties_cache_[*iter] = stringVal;
+    if (properties_.find(key) == properties_.end()) {
+      properties_cache_[key] = stringVal;
     } else {
-      GetPropSafe(*iter)->SetValue(stringVal);
+      GetPropSafe(key)->SetValue(stringVal);
     }
   }
   return true;
