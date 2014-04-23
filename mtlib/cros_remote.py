@@ -85,8 +85,7 @@ class CrOSRemote(object):
         print "Command returned %d: %s" % (ret, " ".join(command))
       return False
     output = process.stdout.read()
-    output.replace("\r", "")
-    return output
+    return output.replace("\r", "")
 
   def _SetupIdentity(self):
     source = os.path.expanduser('~/trunk/chromite/ssh_keys/testing_rsa')
