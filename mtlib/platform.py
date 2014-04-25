@@ -13,8 +13,7 @@ from cros_remote import CrOSRemote
 # path to current script directory
 script_dir = os.path.dirname(os.path.realpath(__file__))
 platforms_dir = os.path.realpath(os.path.join(script_dir, '..', 'platforms'))
-xorg_conf_path = os.path.realpath(os.path.join(script_dir, '..',
-                                               '..', 'xorg-conf'))
+xorg_conf_project_path = 'src/platform/xorg-conf'
 
 props_template = """\
 {
@@ -131,6 +130,19 @@ class PlatformProperties(object):
 
     if 'ignore' in data:
       self.ignore_properties.extend(data['ignore'])
+
+    # Sanity check: Make sure it is not used inside ebuild.
+    if os.environ.get('PN') and os.environ.get('S'):
+      raise Exception("Should not be executed inside ebuild")
+
+    # If run on a Chromebook device, access xorg-conf files from their normal
+    # installed location. If run from inside chroot, access xorg-conf files
+    # from the xorg-conf project repository.
+    src_root = os.environ.get('CROS_WORKON_SRCROOT')
+    if src_root:
+      xorg_conf_path = os.path.join(src_root, xorg_conf_project_path)
+    else:
+      xorg_conf_path = '/etc/X11/xorg.conf.d'
 
     if xorg_conf_path and 'xorg' in data and 'file' in data['xorg']:
       filename = os.path.join(xorg_conf_path, data['xorg']['file'])
