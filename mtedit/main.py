@@ -80,7 +80,8 @@ def main(argv):
       editor.View(log)
     else:
       log = editor.Edit(log)
-      log.SaveAs(options.out)
+      if log:
+        log.SaveAs(options.out)
 
   log.CleanUp()
 

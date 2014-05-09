@@ -293,6 +293,7 @@ class DeviceLog(AbstractLog):
     self.remote = CrOSRemote(ip)
 
     if new:
-      self.remote.Execute('/opt/google/touchpad/tpcontrol log')
+      self.remote.SafeExecute('/opt/google/input/inputcontrol -t touchpad' +
+                              ' --log')
     self.activity = self.remote.Read('/var/log/xorg/touchpad_activity_log.txt')
     self.evdev = self.remote.Read('/var/log/xorg/cmt_input_events.dat')

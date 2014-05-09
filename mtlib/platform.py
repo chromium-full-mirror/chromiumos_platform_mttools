@@ -2,13 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
-""" This module manages the platform properties in mttools/platforms """
+""" This module manages the platform properties in mttools/platforms. """
+from cros_remote import CrOSRemote
+from util import AskUser
+from xorg_conf import XorgInputClassParser
 import json
 import os
 import re
 import sys
-from xorg_conf import XorgInputClassParser
-from cros_remote import CrOSRemote
 
 # path to current script directory
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -38,6 +39,8 @@ class PlatformProperties(object):
     self.required_axis = []
     self.has_axis = []
     self.device_class = "touchpad"
+    self.properties = {}
+    self.ignore_properties = []
     if platform:
       basename = os.path.join(platforms_dir, platform)
       self.name = platform
@@ -55,7 +58,7 @@ class PlatformProperties(object):
 
 
   def _ParseActivityLog(self, activity_data):
-    """ Parse property information from an activity log """
+    """ Parse property information from an activity log."""
     activity = json.loads(activity_data)
     self.properties = activity['properties']
 
@@ -72,13 +75,13 @@ class PlatformProperties(object):
     # absinfo: axis min max 0 0 res
     abs_regex = 5 * ' ([0-9]+)'
     xregex = re.compile('# absinfo: 53' + abs_regex)
-    xmatch = xregex.search(evdev_data);
+    xmatch = xregex.search(evdev_data)
     self.x_min = int(xmatch.group(1))
     self.x_max = int(xmatch.group(2))
     self.x_res = int(xmatch.group(5))
 
     yregex = re.compile('# absinfo: 54' + abs_regex)
-    ymatch = yregex.search(evdev_data);
+    ymatch = yregex.search(evdev_data)
     self.y_min = int(ymatch.group(1))
     self.y_max = int(ymatch.group(2))
     self.y_res = int(ymatch.group(5))
@@ -98,16 +101,16 @@ class PlatformProperties(object):
 
 
   def _ParseHWProperties(self, data):
-    """ Parse x and y dimensions and resolution from hwprops file """
-    abs_regex = 5 * ' ([0-9\-]+)'
+    """Parse x and y dimensions and resolution from hwprops file."""
+    abs_regex = 5 * ' ([0-9\\-]+)'
     xregex = re.compile('A: 35' + abs_regex)
-    xmatch = xregex.search(data);
+    xmatch = xregex.search(data)
     self.x_min = int(xmatch.group(1))
     self.x_max = int(xmatch.group(2))
     self.x_res = int(xmatch.group(5))
 
     yregex = re.compile('A: 36' + abs_regex)
-    ymatch = yregex.search(data);
+    ymatch = yregex.search(data)
     self.y_min = int(ymatch.group(1))
     self.y_max = int(ymatch.group(2))
     self.y_res = int(ymatch.group(5))
@@ -238,7 +241,7 @@ class PlatformProperties(object):
         print "axis:", other.required_axis, "in", self.has_axis
       check_axis(other.required_axis, self.has_axis)
 
-    return reduce(lambda x,y: (x * y), scores)
+    return reduce(lambda x, y: (x * y), scores)
 
 class PlatformDatabase(object):
   """ Class for managing platforms.
@@ -247,11 +250,11 @@ class PlatformDatabase(object):
   to search for matching platforms to an activity log file.
   """
   def __init__(self):
-    platform_files = [ f for f in os.listdir(platforms_dir)
-                         if f.endswith('.hwprops') ]
+    platform_files = [f for f in os.listdir(platforms_dir)
+                      if f.endswith('.hwprops')]
     self.platforms = {}
-    for file in platform_files:
-      name = file.replace('.hwprops', '')
+    for filename in platform_files:
+      name = filename.replace('.hwprops', '')
       self.platforms[name] = PlatformProperties(platform=name)
 
   def FindMatching(self, log, loose=True, debug=False):
@@ -288,11 +291,9 @@ class PlatformDatabase(object):
   def RegisterPlatformFromDevice(ip):
     # get list of multitouch devices
     remote = CrOSRemote(ip)
-    devices = remote.ReadCommand(
+    devices = remote.SafeExecute(
         "/opt/google/input/inputcontrol -t multitouch --names",
         verbose=True)
-    if devices is False:
-      return None
 
     # Each line has the format:
     # id: Device Name
@@ -302,12 +303,12 @@ class PlatformDatabase(object):
     devices = [l.split(":", 1) for l in devices]
 
     # select one device from list
-    idx = UserSelection([d[1] for d in devices],
+    idx = AskUser.Select([d[1] for d in devices],
                          "Which device would you like to register?")
     device_id = devices[idx][0]
 
     # read hardware properties
-    hwprops = remote.ReadCommand(
+    hwprops = remote.SafeExecute(
         "/opt/google/input/inputcontrol --id %s --hwprops" % device_id,
         verbose=True)
     if not hwprops:
@@ -317,14 +318,14 @@ class PlatformDatabase(object):
       return None
 
     xorg_files = [
-      "/etc/X11/xorg.conf.d/60-touchpad-cmt-*.conf",
-      "/etc/X11/xorg.conf.d/50-touchpad-cmt-*.conf",
-      "/etc/X11/xorg.conf.d/40-touchpad-cmt.conf"
+        "/etc/X11/xorg.conf.d/60-touchpad-cmt-*.conf",
+        "/etc/X11/xorg.conf.d/50-touchpad-cmt-*.conf",
+        "/etc/X11/xorg.conf.d/40-touchpad-cmt.conf"
     ]
 
     for pattern in xorg_files:
       # find filename of xorg configuration file
-      xorg_file = remote.ReadCommand("ls " + pattern, verbose=False)
+      xorg_file = remote.Execute("ls " + pattern, verbose=False)
       if not xorg_file:
         continue
       xorg_file = xorg_file.strip()
@@ -333,13 +334,13 @@ class PlatformDatabase(object):
       print "Selecting Xorg identifiers from", xorg_file
       conf = remote.Read(xorg_file)
       all_ids = []
-      for match in re.finditer("Identifier\s+\"([a-zA-Z0-9-_ ]+)\"", conf):
+      for match in re.finditer("Identifier\\s+\"([a-zA-Z0-9-_ ]+)\"", conf):
         all_ids.append(match.group(1))
 
       # ask user to select
-      idxs = UserSelection(all_ids,
-                           "Which xorg identifiers apply to this device?",
-                           allow_multi=True, allow_zero=True)
+      idxs = AskUser.SelectMulti(
+          all_ids, "Which xorg identifiers apply to this device?",
+          allow_none=True)
       ids = [all_ids[i] for i in idxs]
       if ids:
         break
@@ -349,7 +350,7 @@ class PlatformDatabase(object):
       xorg_file = "todo: add correct xorg conf file"
       ids = ["todo: add correct xorg identifier"]
 
-    ids_string = "[" + ", ".join(["\"%s\"" % id for id in ids]) + "]"
+    ids_string = "[" + ", ".join(["\"%s\"" % i for i in ids]) + "]"
     xorg_file = os.path.basename(xorg_file)
 
     sys.stdout.write("Please name this platform: ")
@@ -368,55 +369,3 @@ class PlatformDatabase(object):
     print " ", props_file
 
     return platform_name
-
-
-def UserSelection(list, msg, allow_multi=False, allow_zero=False):
-  idx = [0]
-  if len(list) == 1 and not allow_zero:
-    return [0] if allow_multi else 0
-
-  # repeat until user made a valid selection
-  while True:
-
-    # get user input
-    print msg
-    if allow_zero:
-      print "  0: None"
-    for i, item in enumerate(list):
-      print " ", str(i + 1) + ":", item
-    if allow_multi:
-      print "(Separate multiple selections with spaces)"
-    sys.stdout.write('> ')
-    sys.stdout.flush()
-    selection = sys.stdin.readline()
-
-    # validates single input value
-    def CheckSelection(selection):
-      try:
-        idx = int(selection) - 1
-        if allow_zero and idx == -1:
-          return True
-        if idx < 0 or idx >= len(list):
-          print 'Number out of range'
-          return False
-      except:
-        print 'Not a number'
-        return False
-      return True
-
-    if allow_multi:
-      # validate list of values
-      valid = True
-      selections = selection.split(" ")
-      for selection in selections:
-        if not CheckSelection(selection):
-          valid = False
-          break
-      if valid:
-        selections = [int(s) - 1 for s in selections]
-        if -1 in selections:
-          return []
-        return selections
-    else:
-      if CheckSelection(selection):
-        return int(selection) - 1

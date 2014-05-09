@@ -7,8 +7,10 @@ This module defines a class wrapping around SSH and SCP commands to connect
 to chromebooks and run remote commands, download or upload files.
 """
 
+from mtlib.util import Execute, SafeExecute
 import os
-import subprocess
+import re
+
 import sys
 import tempfile
 
@@ -25,21 +27,22 @@ class CrOSRemote(object):
     if not os.path.exists(self.id_path):
       self._SetupIdentity()
     self.ip = ip
+    self.info = None
 
-  def Execute(self, command, cwd=None, verbose=False):
+  def Execute(self, command, cwd=None, verbose=False, interactive=False):
     cmd = self._BuildCommand(command, cwd)
-    return self._Exec(cmd, verbose)
+    return Execute(cmd, None, verbose, interactive)
 
-  def ReadCommand(self, command, cwd=None, verbose=False):
+  def SafeExecute(self, command, cwd=None, verbose=False, interactive=False):
     cmd = self._BuildCommand(command, cwd)
-    return self._GetCommandOutput(cmd, verbose)
+    return SafeExecute(cmd, None, verbose, interactive)
 
   def Read(self, filename):
     temp = tempfile.NamedTemporaryFile('r')
     cmd = ('scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ' +
            '-q root@%s:%s %s')
     cmd = cmd % (self.ip, filename, temp.name)
-    self._Exec(cmd.split())
+    SafeExecute(cmd)
     temp.seek(0)
     return temp.read()
 
@@ -52,7 +55,7 @@ class CrOSRemote(object):
     cmd = ('scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ' +
            '-q %s root@%s:%s')
     cmd = cmd % (self.ip, temp.name, filename)
-    self._Exec(cmd.split())
+    SafeExecute(cmd.split())
 
   def _BuildCommand(self, command, cwd=None):
     if cwd:
@@ -63,30 +66,6 @@ class CrOSRemote(object):
     cmd.append(command)
     return cmd
 
-  def _Exec(self, command, verbose=False):
-    if verbose:
-      process = subprocess.Popen(command)
-    else:
-      process = subprocess.Popen(command, stdout=subprocess.PIPE)
-    ret = process.wait()
-    if ret:
-      if verbose:
-        print "Command returned %d: %s" % (ret, " ".join(command))
-      return False
-    return True
-
-  def _GetCommandOutput(self, command, verbose=False):
-    process = subprocess.Popen(command, stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT)
-    ret = process.wait()
-    if ret:
-      if verbose:
-        print process.stdout.read()
-        print "Command returned %d: %s" % (ret, " ".join(command))
-      return False
-    output = process.stdout.read()
-    return output.replace("\r", "")
-
   def _SetupIdentity(self):
     source = os.path.expanduser('~/trunk/chromite/ssh_keys/testing_rsa')
     command = 'cp %s %s && chmod 600 %s' % (source, self.id_path, self.id_path)
@@ -94,4 +73,4 @@ class CrOSRemote(object):
     response = sys.stdin.readline().strip()
     if response in ('Yes', 'yes', 'Y', 'y'):
       print command
-      os.system(command)
+      SafeExecute(command)

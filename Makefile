@@ -1,4 +1,4 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -40,9 +40,6 @@ install: replay
 IN_PLACE_DEPS=../libevdev ../gestures mtreplay
 
 setup-in-place:
-	# utouch-evemu is currently required, but will be removed soon.
-	emerge utouch-evemu
-
 	$(foreach dep, $(IN_PLACE_DEPS), OUT=. make -C $(dep) setup-in-place;)
 
 	# add project folder to python path
