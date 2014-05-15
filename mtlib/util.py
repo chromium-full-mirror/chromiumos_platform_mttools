@@ -372,6 +372,8 @@ class GitRepo(object):
 
   def Upload(self):
     result = self.SafeExecute("push %s HEAD:refs/for/master" % self.remote)
+    if "error" in result or "Error" in result:
+      raise Exception("Failed to upload:\n{}".format(result))
     regex = "https://[a-zA-Z0-9\\-\\./]+"
     match = re.search(regex, result)
     if match:

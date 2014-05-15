@@ -27,6 +27,9 @@ install: replay
 	mkdir -p $(DESTDIR)/mtlib
 	install -m 644 mtlib/*.py $(DESTDIR)/mtlib
 
+	mkdir -p $(DESTDIR)/mtbringup
+	install -m 644 mtbringup/*.py $(DESTDIR)/mtbringup
+
 	mkdir -p $(DESTDIR)/mtreplay
 	install -m 644 mtreplay/*.py $(DESTDIR)/mtreplay
 	install mtreplay/replay $(DESTDIR)/mtreplay/replay
@@ -49,6 +52,8 @@ setup-in-place:
 	ln -sf $(SRC)/mtedit/main.py /usr/bin/mtedit
 	ln -sf $(SRC)/mtreplay/main.py /usr/bin/mtreplay
 	ln -sf $(SRC)/mtstat/main.py /usr/bin/mtstat
+	ln -sf $(SRC)/mtbringup/main.py /usr/bin/mtbringup
+	ln -sf $(SRC)/mtbringup/main_firmware.py /usr/bin/mtbringup-firmware
 
 clean-in-place:
 	$(foreach dep, $(IN_PLACE_DEPS), OUT=. make -C $(dep) clean-in-place;)
