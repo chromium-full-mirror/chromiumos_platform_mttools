@@ -49,6 +49,10 @@ class MTBringupTool(object):
     self.emerge = Emerge(self.board_variant)
 
   @property
+  def has_remote(self):
+    return self._remote is not None
+
+  @property
   def remote(self):
     if self._remote:
       return self._remote
@@ -80,11 +84,14 @@ class MTBringupTool(object):
     return devices.values()[selection]
 
   def GitRepoPrepared(self, path):
+    if not path.exists:
+      raise Exception("{} not found. Can't be a GIT repo".format(path))
     repo = GitRepo(path)
     if repo.active_branch != self.branch_name:
       raise Exception("Git repository is not prepared.")
 
   def PrepareGit(self, path):
+    path.MakeDirs()
     repo = GitRepo(path)
 
     if not repo.path.exists:

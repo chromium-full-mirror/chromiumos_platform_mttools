@@ -139,6 +139,7 @@ class CrOSDeviceInfo(object):
   def __init__(self, remote):
     self.remote = remote
     self.ip = remote.ip
+    self.arch = remote.SafeExecute("arch")
 
     # read board_variant from device
     info = self.remote.Read("/etc/lsb-release")

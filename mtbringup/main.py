@@ -15,8 +15,11 @@ class DiscoverTool(MTBringupTool):
     MTBringupTool.__init__(self, args)
 
   def Status(self):
+    print "Board: {}".format(self.board_variant)
+    if not self.has_remote:
+      return
+
     print "Device IP: {}".format(self.remote.ip)
-    print "Board: {}".format(self.device_info.board_variant)
     print "Touch devices:"
     for device in self.device_info.touch_devices.values():
       print " - {}:".format(device.name)

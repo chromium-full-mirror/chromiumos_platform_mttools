@@ -9,7 +9,7 @@ from common import (MTBringupTool,
                     ExecuteCommonCommands,
                     MTBringupToolArgs)
 from mtlib.util import AskUser, Path
-from mtlib.firmware import FirmwarePackage, FirmwareBinary, FirmwareException
+from mtlib.firmware import FirmwarePackage, FirmwareBinary
 
 src_dir = Path("/mnt/host/source/src/")
 
@@ -37,12 +37,17 @@ class FirmwareTool(MTBringupTool):
     print "Updated device information:"
     print device
 
+  def DownloadBinaries(self):
+    binaries = self.package.GetExistingBinaries()
+    for binary in binaries:
+      open(binary.filename, "w").write(binary.data)
+
   def PrepareBinary(self, device, binary):
     self.ForceUpdate(device, binary)
     binary.UpdateName(device.hw_version, device.fw_version)
     print "Renamed binary to: {}".format(binary.filename)
 
-  def GenerateEbuildPackage(self, new_version, binaries):
+  def GenerateEbuildPackage(self, new_version, binaries, clean):
     for binary in binaries:
       if not binary.fw_version or not binary.hw_version:
         msg = "Prepare {} with --prepare-binary"
@@ -68,7 +73,7 @@ class FirmwareTool(MTBringupTool):
       self.package.AddBinary(binary)
 
     self.package.UpdateVersionSymlink(new_version)
-    self.package.UpdateEbuildFile(self.remote)
+    self.package.UpdateEbuildFile(self.remote, regenerate=clean)
 
     tar_file = self.package.GenerateBCSPackage(new_version)
     print "Upload the package {} to the following url".format(tar_file.basename)
@@ -80,6 +85,9 @@ class FirmwareTool(MTBringupTool):
   def Status(self):
     print "Firmware Ebuild Status:"
     print "  Ebuild: {}".format(self.package.ebuild_file)
+    if not self.package.ebuild_file.exists:
+      print "  Ebuild does not exist."
+      return
     print "  Ebuild version: {}".format(self.package.ebuild_version)
     print "  GIT branch: {}".format(self.package.ebuild_repo.active_branch)
     print "  GIT status: {}".format(self.package.ebuild_repo.status)
@@ -144,11 +152,18 @@ def main():
                       dest="prepare_binary", default=None,
                       help="rename binary to hwver_fwver.bin.")
   parser.add_argument("--ebuild",
-                      dest="ebuild", default=None, nargs="+",
+                      dest="ebuild", default=None, nargs="*",
                       help="Generate firmware package and ebuild file.")
   parser.add_argument("--version",
                       dest="version", default=None,
                       help="Specify new version of generated ebuild package")
+  parser.add_argument("--clean-ebuild",
+                      dest="clean_ebuild", default=None, nargs="*",
+                      help="Generate firmware package and ebuild file " +
+                           "from scratch")
+  parser.add_argument("--download",
+                      dest="download", default=False, action="store_true",
+                      help="download all firmware binaries to cwd")
 
   args = parser.parse_args()
   tool = FirmwareTool(MTBringupToolArgs(args))
@@ -161,8 +176,10 @@ def main():
       tool.PrepareBinary(device, binary)
     elif args.force_update:
       tool.ForceUpdate(device, binary)
-
-  elif args.ebuild:
+  elif args.download:
+    tool.DownloadBinaries()
+  elif args.ebuild is not None or args.clean_ebuild is not None:
+    files = args.ebuild or args.clean_ebuild
     new_version = args.version
     if not new_version:
       print "Enter the new version number of this ebuild:"
@@ -171,8 +188,11 @@ def main():
         print "(The current version is: {})".format(current_version)
         # todo(denniskempin): automatically increment x.x or x.x-rx version
       new_version = AskUser.Text()
-    binaries = [FirmwareBinary(b) for b in args.ebuild]
-    tool.GenerateEbuildPackage(new_version, binaries)
+      if not new_version:
+        exit(-1)
+    binaries = [FirmwareBinary(b) for b in files]
+    tool.GenerateEbuildPackage(new_version, binaries,
+                               args.clean_ebuild is not None)
 
   else:
     ExecuteCommonCommands(args, tool)
