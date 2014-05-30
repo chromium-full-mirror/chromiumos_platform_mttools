@@ -54,6 +54,7 @@ setup-in-place:
 	ln -sf $(SRC)/mtstat/main.py /usr/bin/mtstat
 	ln -sf $(SRC)/mtbringup/main.py /usr/bin/mtbringup
 	ln -sf $(SRC)/mtbringup/main_firmware.py /usr/bin/mtbringup-firmware
+	ln -sf $(SRC)/mtbringup/main_xorg.py /usr/bin/mtbringup-xorg
 
 clean-in-place:
 	$(foreach dep, $(IN_PLACE_DEPS), OUT=. make -C $(dep) clean-in-place;)

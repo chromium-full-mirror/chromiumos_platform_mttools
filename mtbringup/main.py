@@ -6,7 +6,7 @@
 
 from common import MTBringupTool, MTBringupArgumentParser, ExecuteCommonCommands
 from main_firmware import FirmwareTool
-
+from main_xorg import XorgTool
 
 class DiscoverTool(MTBringupTool):
   name = "Discovery"
@@ -49,7 +49,8 @@ def main():
 
   tools = [
       DiscoverTool(args),
-      FirmwareTool(args)
+      FirmwareTool(args),
+      XorgTool(args)
   ]
 
   for tool in tools:

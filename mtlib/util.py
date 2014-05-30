@@ -227,7 +227,7 @@ def __Execute(command, cwd=None, verbose=False, interactive=False):
                                stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT,
                                cwd=cwd)
-  if verbose:
+  if verbose and not interactive:
     # print a . approximately every second to show progress
     seconds = 0
     while process.poll() is None:
