@@ -30,6 +30,11 @@ class DeviceInfo(object):
     self.fw_version = None
     self.symlink = None
 
+    self.fw_version = self.ReadDeviceFile(
+        remote, ["fw_version", "firmware_version"])
+    self.hw_version = self.ReadDeviceFile(
+        remote, ["hw_version", "product_id"])
+
     self.hw_name = self.ReadDeviceFile(remote, "name")
 
     input_path = os.path.join(self.path, "input")
@@ -47,9 +52,15 @@ class DeviceInfo(object):
   def Refresh(self, remote):
     self.__init__(remote, self.id)
 
-  def ReadDeviceFile(self, remote, name):
-    path = os.path.join(self.path, name)
-    return remote.SafeExecute("cat " + path).strip()
+  def ReadDeviceFile(self, remote, names):
+    if isinstance(names, str):
+      names = [names]
+    for name in names:
+      path = os.path.join(self.path, name)
+      res = remote.Execute("cat " + path)
+      if res:
+        return res.strip()
+    raise Exception("Cannot read any of the remote files: {}".format(names))
 
   def ForceFirmwareUpdate(self, remote):
     update_path = os.path.join(self.path, "update_fw")
@@ -68,8 +79,6 @@ class AtmelDeviceInfo(DeviceInfo):
 
   def __init__(self, remote, device_id):
     DeviceInfo.__init__(self, remote, device_id)
-    self.fw_version = self.ReadDeviceFile(remote, "fw_version")
-    self.hw_version = self.ReadDeviceFile(remote, "hw_version")
 
     if self.hw_name == "atmel_mxt_ts":
       self.symlink = "maxtouch_ts.fw"
@@ -100,17 +109,16 @@ class ElanDeviceInfo(DeviceInfo):
   """Implementation of DeviceInfo for Elan touch devices."""
   vendor = "Elan"
 
-  def __init__(self, remote, device_id):
+  def __init__(self, remote, device_id, symlink):
     DeviceInfo.__init__(self, remote, device_id)
-    self.fw_version = self.ReadDeviceFile(remote, "firmware_version")
-    self.hw_version = self.ReadDeviceFile(remote, "product_id")
-    self.symlink = "elan_i2c.bin"
+    self.symlink = symlink
 
   @staticmethod
   def DiscoverAll(remote):
-    devices = EnumerateI2CDevices(remote, "/sys/bus/i2c/drivers/elan_i2c/")
-    return [ElanDeviceInfo(remote, d) for d in devices]
-
+    tp_devices = EnumerateI2CDevices(remote, "/sys/bus/i2c/drivers/elan_i2c/")
+    ts_devices = EnumerateI2CDevices(remote, "/sys/bus/i2c/drivers/elants_i2c/")
+    return ([ElanDeviceInfo(remote, d, "elan_i2c.bin") for d in tp_devices] +
+            [ElanDeviceInfo(remote, d, "elants_i2c.bin") for d in ts_devices])
 
 class CypressDeviceInfo(DeviceInfo):
   """Implementation of DeviceInfo for Cypress touch devices."""
@@ -118,8 +126,6 @@ class CypressDeviceInfo(DeviceInfo):
 
   def __init__(self, remote, device_id):
     DeviceInfo.__init__(self, remote, device_id)
-    self.fw_version = self.ReadDeviceFile(remote, "firmware_version")
-    self.hw_version = self.ReadDeviceFile(remote, "product_id")
     self.symlink = "cyapa.bin"
 
   @staticmethod
