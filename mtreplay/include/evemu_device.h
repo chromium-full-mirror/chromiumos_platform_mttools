@@ -8,30 +8,25 @@
 #include <linux/input.h>
 #include <string>
 
-#include <base/basictypes.h>
 extern "C" {
 #include <evemu.h>
 }
 
-namespace evemu {
+#include "util.h"
+
+namespace replay {
 
 // This class wraps the utouch-evemu library.
 // This class is deprecated and will be replaced by the
 // read/write API of libevdev in a follow-up CL.
 class EvemuDevice {
  public:
-  // Create new device without association to an kernel device.
+  // Create new fake device to read/write from files
   EvemuDevice();
   virtual ~EvemuDevice();
 
   // Read a device file from file
   bool ReadDeviceFile(FILE* fp);
-
-  // Read a single event from file. Returns true if reading was successful.
-  static bool ReadEvent(FILE* fp, struct input_event* event);
-
-  // Write a single event to a file. Returns true if writing was successful.
-  static bool WriteEvent(FILE* fp, const struct input_event& event);
 
   // Access information provided by the device file. See utouch-evemu
   // for information on these methods.
@@ -47,6 +42,6 @@ class EvemuDevice {
   DISALLOW_COPY_AND_ASSIGN(EvemuDevice);
 };
 
-}  // namespace evemu
+}  // namespace replay
 
 #endif  // EVEMU_DEVICE_H_

@@ -5,11 +5,12 @@
 #ifndef EVDEV_GESTURES_H_
 #define EVDEV_GESTURES_H_
 
-#include <base/basictypes.h>
 #include <gestures/gestures.h>
 extern "C" {
 #include <libevdev/libevdev.h>
 }
+
+#include "util.h"
 
 namespace replay {
 

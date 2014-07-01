@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <cstdio>
+#include <cstring>
 #include <ext/stdio_filebuf.h>
 
 #include "util.h"

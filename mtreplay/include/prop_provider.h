@@ -8,7 +8,6 @@
 #include <map>
 #include <string>
 
-#include <base/basictypes.h>
 #include <gestures/gestures.h>
 
 #include "util.h"

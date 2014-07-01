@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <gestures/gestures.h>
 
 #include "evdev_gestures.h"
@@ -123,8 +122,8 @@ class ReplayDevice {
     return has_device_data_;
   }
 
-  evemu::EvemuDevice* evemu_device() const {
-    return evemu_device_;
+  EvemuDevice* evdev_file() const {
+    return evdev_file_;
   }
 
  private:
@@ -141,7 +140,7 @@ class ReplayDevice {
   bool has_device_data_;
 
   // The EvemuDevice is used to read event/device files.
-  evemu::EvemuDevice* evemu_device_;
+  EvemuDevice* evdev_file_;
 
   // Instances to the actual multitouch stack
   Evdev_* evdev_device_;

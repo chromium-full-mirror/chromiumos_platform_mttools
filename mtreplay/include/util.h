@@ -8,6 +8,12 @@
 #include <sstream>
 #include <string>
 
+// A macro to disallow the copy constructor and operator= functions
+// This should be used in the private: declarations for a class
+#define DISALLOW_COPY_AND_ASSIGN(TypeName) \
+  TypeName(const TypeName&);               \
+  void operator=(const TypeName&)
+
 namespace replay {
 
 // simple implementation of a lexical cast to convert. Primarily used to

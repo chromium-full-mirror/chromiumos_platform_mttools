@@ -6,16 +6,14 @@
 
 #include <iostream>
 
-#include <base/json/json_reader.h>
-#include <base/json/json_writer.h>
-#include <base/values.h>
+#include <jsoncpp/json/reader.h>
+#include <jsoncpp/json/value.h>
 
 #include "util.h"
 
-namespace replay {
+using Json::Value;
 
-using base::Value;
-using base::JSONReader;
+namespace replay {
 
 // Implementation of GesturesProp for all numerical types
 template<typename Type>
@@ -110,47 +108,36 @@ GesturesProp* PropProvider::GetPropSafe(const std::string& name) {
 }
 
 bool PropProvider::Load(const std::string& data) {
-  int error_code;
-  std::string error_msg;
-  Value* root = JSONReader::ReadAndReturnError(data, true, &error_code,
-                                               &error_msg);
-  if (!root) {
-    std::cerr << "Parse failed: " << error_msg << std::endl;
+  Json::Reader reader;
+  Value root;
+  if (!reader.parse(data, root, false)) {
+    std::cerr << "Parse failed" << reader.getFormattedErrorMessages()
+              << std::endl;
     return false;
   }
 
-  base::DictionaryValue* dict = NULL;
-  if (!root->GetAsDictionary(&dict)) {
-    std::cerr << "Root object has to be a dictionary" << std::endl;
-    return false;
-  }
+  for (std::string key: root.getMemberNames()) {
+    const Value& value = root[key];
 
-  for (base::DictionaryValue::Iterator iter(*dict); !iter.IsAtEnd();
-       iter.Advance()) {
-    const std::string& key = iter.key();
-    const Value& value = iter.value();
     std::string stringVal;
-    switch (value.GetType()) {
-    case Value::TYPE_INTEGER: {
-      int intVal;
-      value.GetAsInteger(&intVal);
+    switch (value.type()) {
+    case Json::intValue: {
+      int intVal = value.asInt();
       stringVal = replay_lexical_cast<std::string>(intVal);
       break;
     }
-    case Value::TYPE_BOOLEAN: {
-      bool boolVal;
-      value.GetAsBoolean(&boolVal);
+    case Json::booleanValue: {
+      bool boolVal = value.asBool();
       stringVal = replay_lexical_cast<std::string>(boolVal);
       break;
     }
-    case Value::TYPE_DOUBLE: {
-      double doubleVal;
-      value.GetAsDouble(&doubleVal);
+    case Json::realValue: {
+      double doubleVal = value.asDouble();
       stringVal = replay_lexical_cast<std::string>(doubleVal);
       break;
     }
-    case Value::TYPE_STRING: {
-      value.GetAsString(&stringVal);
+    case Json::stringValue: {
+      stringVal = value.asString();
       break;
     }
     default:

@@ -41,12 +41,12 @@ class TrimmerTests : public ::testing::Test {
     Trimmer trimmer(&device);
 
     Stream events;
-    events.OpenReadBuffer(trimmer_tests_events);
+    events.OpenReadBuffer(in);
 
     // buffer for output of trimming.
     // At least as big as the input, but to be save give some extra
     // space in case the output is formated a little different.
-    size_t buffer_size = strlen(trimmer_tests_events) * 1.2;
+    size_t buffer_size = strlen(in) * 1.2;
     Stream out;
     out.OpenWriteBuffer(buffer_size);
 
@@ -78,7 +78,7 @@ class TrimmerTests : public ::testing::Test {
   bool NextSyn(ReplayDevice* device, Stream* events) {
     input_event event;
 
-    while (evemu::EvemuDevice::ReadEvent(events->GetFP(), &event)) {
+    while (EvdevReadEventFromFile(events->GetFP(), &event)) {
       device->ReplayEvent(event);
       if (event.type == EV_SYN) {
         return true;
@@ -177,12 +177,19 @@ class TrimmerTests : public ::testing::Test {
     trimmed_.OpenReadBuffer(result.c_str());
   }
 
+  void StripHeader(Stream* stream) {
+    // strip the header information
+    EvdevInfo info;
+    EvdevReadInfoFromFile(stream->GetFP(), &info);
+  }
+
   // Test if both devices replay cover the same timestamps
   // and if the resulting states are the same.
   void ExpectNoTrimming() {
+    StripHeader(&trimmed_);
     // select first SYN for both
-    NextSyn(replay_trimmed_, &trimmed_);
-    NextSyn(replay_original_, &original_);
+    EXPECT_TRUE(NextSyn(replay_trimmed_, &trimmed_));
+    EXPECT_TRUE(NextSyn(replay_original_, &original_));
 
     ExpectEqualReplay();
 
@@ -195,11 +202,12 @@ class TrimmerTests : public ::testing::Test {
   // But allow the trimmed device to cover only a part of the
   // original log.
   void ExpectTrimmedReplayIsEqual() {
+    StripHeader(&trimmed_);
     // select first SYN from trimmed replay
-    NextSyn(replay_trimmed_, &trimmed_);
+    EXPECT_TRUE(NextSyn(replay_trimmed_, &trimmed_));
     // find matching SYN in original replay
-    FindMatchingSyn(replay_original_, &original_,
-                    replay_trimmed_->GetCurrentTime());
+    EXPECT_TRUE(FindMatchingSyn(replay_original_, &original_,
+                                replay_trimmed_->GetCurrentTime()));
 
     ExpectEqualReplay();
 

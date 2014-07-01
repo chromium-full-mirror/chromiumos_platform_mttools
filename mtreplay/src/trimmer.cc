@@ -17,7 +17,7 @@ Trimmer::Trimmer(ReplayDevice* replay)
 void Trimmer::WriteEvent(Stream* out, const struct timeval& time, __u16 type,
                          __u16 code, __s32 value) {
   input_event event = { time, type, code, value };
-  evemu::EvemuDevice::WriteEvent(out->GetFP(), event);
+  EvdevWriteEventToFile(out->GetFP(), &event);
 }
 
 void Trimmer::WriteCurrentState(Stream* out, struct input_event* syn) {
@@ -67,7 +67,7 @@ void Trimmer::WriteCurrentState(Stream* out, struct input_event* syn) {
       WriteEvent(out, syn->time, EV_KEY, i, 1);
     }
   }
-  evemu::EvemuDevice::WriteEvent(out->GetFP(), *syn);
+  EvdevWriteEventToFile(out->GetFP(), syn);
 }
 
 bool Trimmer::Trim(Stream* in, Stream* out, double from,
@@ -105,7 +105,7 @@ bool Trimmer::Trim(Stream* in, Stream* out, double from,
         }
       } else if (timestamp >= to) {
         // we have reached the 'to' timestamp
-        evemu::EvemuDevice::WriteEvent(out->GetFP(), event);
+        EvdevWriteEventToFile(out->GetFP(), &event);
         break;
       }
     }
@@ -114,7 +114,7 @@ bool Trimmer::Trim(Stream* in, Stream* out, double from,
       replay_->ReplayEvent(event);
     } else {
       // write event to output stream
-      evemu::EvemuDevice::WriteEvent(out->GetFP(), event);
+      EvdevWriteEventToFile(out->GetFP(), &event);
     }
   }
 

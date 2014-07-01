@@ -7,6 +7,8 @@
 #include "prop_provider.h"
 
 namespace replay {
+/*
+TODO(denniskempin): Re-implement programmatic access to properties
 
 class PropProviderTests: public ::testing::Test {
 };
@@ -160,5 +162,5 @@ TEST(PropProviderTests, DISABLED_GesturesGetSet) {
   provider.SetValue("Tap Enable", true);
   EXPECT_EQ(provider.GetValue<bool>("Tap Enable"), true);
 }
-
+*/
 }  // namespace replay

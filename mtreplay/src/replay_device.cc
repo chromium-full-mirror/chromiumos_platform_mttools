@@ -15,7 +15,7 @@ namespace replay {
 std::vector<ReplayDevice*> ReplayDevice::devices_;
 
 ReplayDevice::ReplayDevice(ReplayDeviceConfig* config)
-    : config_(config), has_device_data_(false), evemu_device_(NULL),
+    : config_(config), has_device_data_(false), evdev_file_(NULL),
       evdev_gesture_(NULL), interpreter_(NULL), current_state_(NULL),
       current_time_(0), timer_target_time_(0), timer_callback_(NULL),
       timer_callback_udata_(NULL) {
@@ -23,9 +23,9 @@ ReplayDevice::ReplayDevice(ReplayDeviceConfig* config)
   devices_.push_back(this);
 
   // read device file into evemu
-  evemu_device_ = new evemu::EvemuDevice();
+  evdev_file_ = new EvemuDevice();
   if (config_->device.Good()) {
-    evemu_device_->ReadDeviceFile(config_->device.GetFP());
+    evdev_file_->ReadDeviceFile(config_->device.GetFP());
     has_device_data_ = true;
   }
   // load properties from properties file

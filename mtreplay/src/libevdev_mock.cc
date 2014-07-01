@@ -8,7 +8,7 @@
 #include "replay_device.h"
 #include "util.h"
 
-using evemu::EvemuDevice;
+using replay::EvemuDevice;
 using replay::ReplayDevice;
 using replay::ReplayDeviceConfig;
 using replay::TestBit;
@@ -50,7 +50,7 @@ int EvdevRead(EvdevPtr evdev) {
 // We fake this by copying data from the evemu device.
 int EvdevProbe(EvdevPtr device) {
   // find replay device instance by file descriptor
-  EvemuDevice* evemu = ReplayDevice::GetDevice(device->fd)->evemu_device();
+  EvemuDevice* evemu = ReplayDevice::GetDevice(device->fd)->evdev_file();
 
   // copy device information
   strcpy(device->info.name, evemu->GetName().c_str());

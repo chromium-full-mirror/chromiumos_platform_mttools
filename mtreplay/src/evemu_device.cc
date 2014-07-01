@@ -6,7 +6,7 @@
 
 #include <cstdio>
 
-namespace evemu {
+namespace replay {
 
 EvemuDevice::EvemuDevice() {
   evemu_ = evemu_new(NULL);
@@ -18,21 +18,6 @@ EvemuDevice::~EvemuDevice() {
 
 bool EvemuDevice::ReadDeviceFile(FILE* fp) {
   return evemu_read(evemu_, fp);
-}
-
-bool EvemuDevice::ReadEvent(FILE* fp, struct input_event* event) {
-  struct input_event tmp;
-  int ret = evemu_read_event(fp, &tmp);
-  if (ret > 0) {
-    *event = tmp;
-    return true;
-  }
-  return false;
-}
-
-bool EvemuDevice::WriteEvent(FILE* fp,
-                             const struct input_event& event) {
-  return evemu_write_event(fp, &event) > 0;
 }
 
 const std::string EvemuDevice::GetName() {
