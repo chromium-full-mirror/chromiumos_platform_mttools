@@ -113,6 +113,9 @@ class ElanDeviceInfo(DeviceInfo):
     DeviceInfo.__init__(self, remote, device_id)
     self.symlink = symlink
 
+  def Refresh(self, remote):
+    self.__init__(remote, self.id, self.symlink)
+
   @staticmethod
   def DiscoverAll(remote):
     tp_devices = EnumerateI2CDevices(remote, "/sys/bus/i2c/drivers/elan_i2c/")
