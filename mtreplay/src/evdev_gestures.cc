@@ -21,6 +21,7 @@ EvdevGesture::~EvdevGesture() {
 
 void EvdevGesture::InitHardwareProperties(struct HardwareProperties* hwprops,
                                           PropProvider* properties) {
+  memset(hwprops, 0, sizeof(*hwprops));
   hwprops->left = Event_Get_Left(evdev_);
   properties->GetPropValue("Active Area Left", &hwprops->left);
   hwprops->top = Event_Get_Top(evdev_);
