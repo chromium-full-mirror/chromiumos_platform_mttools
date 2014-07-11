@@ -140,7 +140,7 @@ class MTReplay(object):
       platform = PlatformProperties(force_platform)
     else:
       dbg_log.info("Matching platforms...")
-      platform = self.PlatformOf(log, True)
+      platform = self.PlatformOf(log, False)
     if not platform:
       dbg_log.info("Unable to find platform")
       return None
