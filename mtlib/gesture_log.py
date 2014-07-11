@@ -134,6 +134,9 @@ class AxisGesture(object):
     self.segments.append(motion.distance)
     self.end = motion.end
 
+  def Distance(self):
+    return self.distance
+
   def Speed(self):
     """ Average speed of motion in mm/s. """
     if self.end > self.start:
