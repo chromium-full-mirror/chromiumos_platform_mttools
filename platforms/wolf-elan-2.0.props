@@ -1,0 +1,10 @@
+{
+  "gestures": {
+  },
+  "xorg": {
+    "file": "50-touchpad-cmt-wolf.conf",
+    "identifiers": ["touchpad wolf", "touchpad wolf elan"]
+  },
+  "ignore": [
+  ]
+}
