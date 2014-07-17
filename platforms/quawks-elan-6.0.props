@@ -1,0 +1,10 @@
+{
+  "gestures": {
+  },
+  "xorg": {
+    "file": "50-touchpad-cmt-quawks.conf",
+    "identifiers": ["touchpad quawks"]
+  },
+  "ignore": [
+  ]
+}
