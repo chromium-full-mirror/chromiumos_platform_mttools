@@ -272,7 +272,7 @@ class PlatformDatabase(object):
       score = platform.Match(properties, loose, debug)
       if debug:
         print name, "score =", score
-      if score > 0.9:
+      if score > 0.96:
         if result:
           if loose:
             if debug:
