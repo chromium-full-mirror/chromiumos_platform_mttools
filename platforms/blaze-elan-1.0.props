@@ -1,0 +1,10 @@
+{
+  "gestures": {
+  },
+  "xorg": {
+    "file": "60-touchpad-cmt-nyan_blaze.conf",
+    "identifiers": ["touchpad blaze"]
+  },
+  "ignore": [
+  ]
+}
