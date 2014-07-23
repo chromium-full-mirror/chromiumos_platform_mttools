@@ -1,0 +1,10 @@
+{
+  "gestures": {
+  },
+  "xorg": {
+    "file": "60-touchpad-cmt-nyan_big.conf",
+    "identifiers": ["touchpad big"]
+  },
+  "ignore": [
+  ]
+}
