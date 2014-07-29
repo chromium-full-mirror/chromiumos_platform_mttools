@@ -73,7 +73,7 @@ class PlatformProperties(object):
   def _ParseEvdevLog(self, evdev_data):
     # Look for embedded hwproperties in header. Format:
     # absinfo: axis min max 0 0 res
-    abs_regex = 5 * ' ([0-9]+)'
+    abs_regex = 5 * ' ([-0-9]+)'
     xregex = re.compile('# absinfo: 53' + abs_regex)
     xmatch = xregex.search(evdev_data)
     self.x_min = int(xmatch.group(1))
