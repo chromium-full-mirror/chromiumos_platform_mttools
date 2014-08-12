@@ -93,9 +93,10 @@ class FirmwarePackage(object):
     else:
       overlay_name = "overlay-{}-private".format(board)
     self.overlay = src_dir / "private-overlays" / overlay_name
-    self.bcsname = self.overlay.basename.replace("overlay-", "bcs-")
+    self.bcsname = "bcs-{}-private".format(variant if variant else board)
 
-    self.ebuild_name = "chromeos-touch-firmware-{}".format(board)
+    self.ebuild_name = "chromeos-touch-firmware-{}".format(
+                                                  variant if variant else board)
     self.ebuild_dir = self.overlay / "chromeos-base" / self.ebuild_name
     self.ebuild_repo = GitRepo(self.ebuild_dir)
 
@@ -162,7 +163,7 @@ class FirmwarePackage(object):
     self.binaries[binary.hw_version] = binary
 
   def GenerateBCSPackage(self, version):
-    tar_name = "chromeos-touch-firmware-{}-{}".format(self.board, version)
+    tar_name = "{}-{}".format(self.ebuild_name, version)
     tar_file = "{}.tbz2".format(tar_name)
 
     tar = tarfile.open(tar_file, "w:bz2")
