@@ -8,6 +8,7 @@ import imghdr
 import os
 import os.path
 import re
+import subprocess
 import sys
 import urllib
 import urllib2
@@ -27,9 +28,20 @@ if not os.path.exists(log_cache_dir):
   os.mkdir(log_cache_dir)
 
 class FeedbackDownloader():
+  STUBBY_CMD = 'stubby --security_protocol=loas --binary_output=0 \
+                       call blade:feedback-export-api-prod \
+                       ReportService.Get \'resource_id: "{}"\''
+  BINARY_DATA_FILTER = '| grep -A 2 \'name: "system_logs.zip"\' | tail -n 1 \
+                        | sed \'s/.*data: "\(.*\)"\s*/\\1/\''
+  SCREENSHOT_FILTER = '| grep -A 2 \'screenshot <\' | tail -n 1 \
+                       | sed \'s/.*content: "\(.*\)"\s*/\\1/\''
+
   def __init__(self, force_login=False):
     if force_login and os.path.exists(cookies_file):
       os.remove(cookies_file)
+      self._SetupCookies()
+
+  def _SetupCookies(self):
     # setup cookies file and url opener
     self.cookies = cookielib.MozillaCookieJar(cookies_file)
     if os.path.exists(cookies_file):
@@ -78,55 +90,57 @@ class FeedbackDownloader():
     self.cookies.save()
 
   def DownloadFile(self, url):
+    self._SetupCookies()
     try:
       return self.opener.open(url).read()
     except urllib2.URLError:
       return None
 
-  def _GetAndUpdateCachedFile(self, filename, url):
-    cached_filename = os.path.join(log_cache_dir, filename)
-    try:
-      return open(cached_filename).read()
-    except IOError:
-      data = self.DownloadFile(url)
-      if not data:
+  def _OctetStreamToBinary(self, octetStream):
+    """ The zip files are returned in an octet-stream format that must
+    be decoded back into a binary.  This function scans through the stream
+    and unescapes the special characters
+    """
+    binary = ''
+    i = 0
+    while i < len(octetStream):
+      if ord(octetStream[i]) is ord('\\'):
+        if re.match('\d\d\d', octetStream[i + 1:i + 4]):
+          binary += chr(int(octetStream[i + 1:i + 4], 8))
+          i += 4
+        else:
+          binary += octetStream[i:i + 2].decode("string-escape")
+          i += 2
+      else:
+        binary += octetStream[i]
+        i += 1
+    return binary
+
+  def _DownloadAttachedFile(self, id, filter_cmd):
+    cmd = FeedbackDownloader.STUBBY_CMD.format(id) + filter_cmd
+    print cmd
+    process = subprocess.Popen(cmd, shell=True,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+
+    output, errors = process.communicate()
+    errorcode = process.returncode
+    if errorcode != 0:
+        print "An error (%d) occurred while downloading the logs" % errorcode
         return None
-      # Cache the data on disk
-      file(cached_filename, "w").write(data)
-      return data
+
+    return self._OctetStreamToBinary(output)
 
   def DownloadSystemLog(self, id):
-    # First download the report.zip file
-    logfile = urllib.quote("report-%s-system_logs.zip" % id)
-    query = urllib.urlencode({"id": id, "logIndex": "0"})
-    url = ("https://feedback.corp.googleusercontent.com/binarydata/%s?%s" %
-           (logfile, query))
+    report = self._DownloadAttachedFile(id,
+                                FeedbackDownloader.BINARY_DATA_FILTER)
 
-    print "Feedback downloads are currently not supported."
-    print "Please manually download this file:"
-    print "   ", url
-    print "Then pass the file name '%s' as a parameter instead. e.g.:" % logfile
-    print "     mtedit", logfile
-    print "     mtreplay", logfile
-    print "     touchtests testname -c", logfile
-    sys.exit(1)
-
-    report = self._GetAndUpdateCachedFile(id + ".zip", url)
-    if "<html>" in report:
-      print "Received a website, you have been logged out."
-      print "Please re-login by running:"
-      print "   mtedit --login"
-      return None
     if not report or (report[0:2] != "BZ" and report[0:2] != "PK"):
-      print "Report does not include log files at %s" % url
+      print "Report does not seem to include include log files..."
+      print "Do you need to run 'prodaccess' perhaps?"
       return None
+
     return report
 
   def DownloadScreenshot(self, id):
-    query = urllib.urlencode({"id": id})
-    url = "https://feedback.corp.googleusercontent.com/screenshot?%s" % query
-    image = self._GetAndUpdateCachedFile(id + ".jpg", url)
-    if not image or imghdr.what("", image) != 'jpeg':
-      print "No screenshots available at %s" % url
-      return None
-    return image
+    return self._DownloadAttachedFile(id, FeedbackDownloader.SCREENSHOT_FILTER)
