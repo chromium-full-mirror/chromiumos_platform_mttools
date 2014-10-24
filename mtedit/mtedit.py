@@ -68,7 +68,7 @@ class MTEdit(object):
     self._PrintTPViewURL(end_t=at)
     server.View(self.port, log.activity, self.persistent)
 
-  def Edit(self, log, start_t=None, end_t=None):
+  def Edit(self, log, start_t=None, end_t=None, force_platform=None):
     """ View 'log' in TPView and wait for file to be saved.
 
     Returns the edited results. The server will exit after the
@@ -79,7 +79,7 @@ class MTEdit(object):
 
     from mtreplay import MTReplay
     replay = MTReplay()
-    log = replay.TrimEvdev(log)
+    log = replay.TrimEvdev(log, force_platform=force_platform)
 
     return log
 
