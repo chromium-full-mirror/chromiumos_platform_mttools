@@ -145,7 +145,9 @@ class PlatformProperties(object):
     if src_root:
       xorg_conf_path = os.path.join(src_root, xorg_conf_project_path)
     else:
-      xorg_conf_path = '/etc/X11/xorg.conf.d'
+      xorg_conf_path = '/etc/gesture'
+      if not os.path.exists(xorg_conf_path):
+        xorg_conf_path = '/etc/X11/xorg.conf.d'
 
     if xorg_conf_path and 'xorg' in data and 'file' in data['xorg']:
       filename = os.path.join(xorg_conf_path, data['xorg']['file'])
