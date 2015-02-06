@@ -124,7 +124,8 @@ class FirmwareTool(MTBringupTool):
         version=self.package.ebuild_version,
         binaries="\n".join(lines),
         bug=bug_id)
-
+    self.package.ebuild_repo.Add(self.package.ebuild_file)
+    self.package.ebuild_repo.Add(self.package.ebuild_symlink)
     self.package.ebuild_repo.Commit(message, all_changes=True,
                                     ammend_if_diverged=True)
     self.Upload(self.package.ebuild_repo)
