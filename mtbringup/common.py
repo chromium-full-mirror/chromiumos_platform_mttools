@@ -85,7 +85,7 @@ class MTBringupTool(object):
 
   def GitRepoPrepared(self, path):
     if not path.exists:
-      raise Exception("{} not found. Can't be a GIT repo".format(path))
+      path.MakeDirs()
     repo = GitRepo(path)
     if repo.active_branch != self.branch_name:
       raise Exception("Git repository is not prepared.")
