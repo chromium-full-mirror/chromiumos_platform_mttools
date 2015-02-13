@@ -8,7 +8,7 @@ from common import (MTBringupTool,
                     MTBringupArgumentParser,
                     ExecuteCommonCommands,
                     MTBringupToolArgs)
-from mtlib.xorg_conf import XorgConfBuilder
+from mtlib.xorg_conf import OzoneConfBuilder
 from mtlib.util import GitRepo, Path
 
 xorg_commit_tpl = """\
@@ -35,16 +35,10 @@ class XorgTool(MTBringupTool):
       conf_name = "50-touchpad-cmt-{}.conf".format(info.board)
     self.conf_file = xorg_conf_dir / conf_name
 
-  def Calibrate(self, device):
-    xorg_builder = XorgConfBuilder(self.device_info, self.conf_file, device)
-    xorg_builder.RunCalibration(self.remote, False)
-
   def GenerateXorgConf(self, device):
-    xorg_builder = XorgConfBuilder(self.device_info, self.conf_file, device)
-    calib = xorg_builder.GetCalibrationResults()
-    if not calib:
-      raise Exception("No calibration found for this board.")
-    xorg_builder.UpdateXorgConf(calib)
+    conf_builder = OzoneConfBuilder(self.device_info, self.conf_file, device)
+    conf_builder.RunCalibration(self.remote)
+    conf_builder.UpdateXorgConf()
 
   def Verify(self):
     self.emerge.Deploy("xorg-conf", self.remote)
@@ -68,7 +62,6 @@ class XorgTool(MTBringupTool):
 
 def main():
   usage = "Xorg config bringup tool"
-
   parser = MTBringupArgumentParser(usage)
   parser.add_argument("--prepare",
                       dest="prepare", default=False, action="store_true",
@@ -82,9 +75,6 @@ def main():
   parser.add_argument("--clean",
                       dest="clean", default=False, action="store_true",
                       help="cleanup xorg_conf git repo.")
-  parser.add_argument("--calibrate",
-                      dest="calibrate", default=False, action="store_true",
-                      help="run pressure calibration on remote device")
   parser.add_argument("--conf",
                       dest="conf", default=False, action="store_true",
                       help="generate xorg configuration file")
@@ -92,12 +82,10 @@ def main():
   args = parser.parse_args()
   tool = XorgTool(MTBringupToolArgs(args))
 
-  if args.conf or args.calibrate:
+  if args.conf:
     device = tool.AskForDevice("Which device is the integrated touchpad?")
     if args.conf:
       tool.GenerateXorgConf(device)
-    elif args.calibrate:
-      tool.Calibrate(device)
   else:
     ExecuteCommonCommands(args, tool)
 
