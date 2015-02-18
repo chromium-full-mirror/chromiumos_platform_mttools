@@ -11,7 +11,7 @@ def EnumerateI2CDevices(remote, path):
   if items is False:
     return []
 
-  device_regex = "[0-9a-f]+-[0-9a-f]+"
+  device_regex = "i2c-[0-9a-fA-Z:]+"
   devices = []
   for item in re.finditer(device_regex, items):
     devices.append(item.group(0))
