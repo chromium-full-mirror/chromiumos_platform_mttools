@@ -5,6 +5,7 @@ import math
 import numpy as np
 import re
 import sys
+import time
 from mt.state_machine import MtbStateMachine
 from mtlib.util import RequiredRegex, SafeExecute, Execute, Path
 from remote import ChromeOSTouchDevice
@@ -132,6 +133,8 @@ class OzoneConfBuilder(object):
     average_list = []
     for i, diameter in enumerate(self.probe_diameters):
       pressures = self.ReadProbePressure(remote_touch, i)
+      if i + 1 < len(self.probe_diameters):
+        time.sleep(2)
       average = float(sum(pressures)) / float(len(pressures))
       average_list.append(average)
     self.average_list = average_list
