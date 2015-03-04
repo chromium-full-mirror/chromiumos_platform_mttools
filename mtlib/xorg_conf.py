@@ -137,6 +137,11 @@ class OzoneConfBuilder(object):
     self.average_list = average_list
 
   def CalculateSlopeIntercept(self, average_list, expected_list):
+    # only do the calculation on the first 5 probes, as we find that
+    # the larger ones can introduce errors and are less representative
+    # of typical real fingers.
+    average_list = average_list[0:5]
+    expected_list = expected_list[0:5]
     slope = np.cov(average_list, expected_list)[0][1] / np.var(average_list)
     inter = np.mean(expected_list) - slope * np.mean(average_list)
     return (slope, inter)
