@@ -6,6 +6,7 @@
 from cros_remote import CrOSRemote
 from util import AskUser
 from xorg_conf import XorgInputClassParser
+from util import ExecuteException
 import json
 import os
 import re
@@ -293,36 +294,65 @@ class PlatformDatabase(object):
   def RegisterPlatformFromDevice(ip):
     # get list of multitouch devices
     remote = CrOSRemote(ip)
-    devices = remote.SafeExecute(
-        "/opt/google/input/inputcontrol -t multitouch --names",
-        verbose=True)
+    inputcontrolexist = True
+    try:
+       devices = remote.SafeExecute(
+           "/opt/google/input/inputcontrol -t multitouch --names",
+           verbose=True)
+    except ExecuteException:
+       inputcontrolexist = False
+    if inputcontrolexist:
+       # Each line has the format:
+       # id: Device Name
+       # devices[*][0] will have the id
+       # devices[*][1] will have the name
+       devices = devices.splitlines()
+       devices = [l.split(":", 1) for l in devices]
 
-    # Each line has the format:
-    # id: Device Name
-    # devices[*][0] will have the id
-    # devices[*][1] will have the name
-    devices = devices.splitlines()
-    devices = [l.split(":", 1) for l in devices]
+       # select one device from list
+       idx = AskUser.Select([d[1] for d in devices],
+                            "Which device would you like to register?")
+       device_id = devices[idx][0]
 
-    # select one device from list
-    idx = AskUser.Select([d[1] for d in devices],
-                         "Which device would you like to register?")
-    device_id = devices[idx][0]
-
-    # read hardware properties
-    hwprops = remote.SafeExecute(
-        "/opt/google/input/inputcontrol --id %s --hwprops" % device_id,
-        verbose=True)
+       # read hardware properties
+       hwprops = remote.SafeExecute(
+           "/opt/google/input/inputcontrol --id %s --hwprops" % device_id,
+           verbose=True)
+    else:
+       devices = remote.SafeExecute(
+                        "ls /dev/input/ | grep event",
+                        verbose=True)
+       devices = devices.splitlines()
+       touchdevices = []
+       for d in devices:
+           device_desc_evemu = remote.SafeExecute(
+                                      "evemu-describe /dev/input/%s |grep N:" % d,
+                                      verbose=False)
+           event_number = (d.split("event", 1))[1]
+           device_desc_evemu = device_desc_evemu.split("N:",1)[1]   
+           if "Touchpad" in device_desc_evemu:
+               touchdevices.append([event_number, device_desc_evemu])
+       
+       idx = AskUser.Select([t[1] for t in touchdevices],
+                            "Which device would you like to register?")
+       device_id = touchdevices[idx][0]
+       hwprops = remote.SafeExecute(
+                        "evemu-describe /dev/input/event%s" % touchdevices[idx][0],
+                        verbose=True)
     if not hwprops:
-      print "Please update your device to latest canary or:"
-      print " emerge-${BOARD} inputcontrol"
-      print " cros deploy $DEVICE_IP inputcontrol"
-      return None
+       print "Please update your device to latest canary or:"
+       print " emerge-${BOARD} inputcontrol"
+       print " cros deploy $DEVICE_IP inputcontrol"
+       return None
+      
 
     xorg_files = [
         "/etc/X11/xorg.conf.d/60-touchpad-cmt-*.conf",
         "/etc/X11/xorg.conf.d/50-touchpad-cmt-*.conf",
-        "/etc/X11/xorg.conf.d/40-touchpad-cmt.conf"
+        "/etc/X11/xorg.conf.d/40-touchpad-cmt.conf",
+        "/etc/gesture/60-touchpad-cmt-*.conf",
+        "/etc/gesture/50-touchpad-cmt-*.conf",
+        "/etc/gesture/40-touchpad-cmt.conf"
     ]
 
     for pattern in xorg_files:
