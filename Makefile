@@ -41,8 +41,7 @@ install: replay
 	done
 
 	# Copy symlinks
-	cp -d mt $(DESTDIR)/
-	cp -d remote.py $(DESTDIR)/
+	cp -d remote $(DESTDIR)/
 
 IN_PLACE_DEPS=../libevdev ../gestures mtreplay
 

@@ -6,7 +6,6 @@ import numpy as np
 import re
 import sys
 import time
-from mt.state_machine import MtbStateMachine
 from mtlib.util import RequiredRegex, SafeExecute, Execute, Path
 from remote import ChromeOSTouchDevice
 
@@ -154,23 +153,14 @@ class OzoneConfBuilder(object):
     print "Move probe %s in circles over the touchpad:" % probe_name
 
     pressures = []
-    state_machine = MtbStateMachine()
-    remote_touch.BeginEventStream()
+    remote_touch.FlushSnapshotBuffer()
     while len(pressures) < self.num_samples:
-      event = remote_touch.NextEvent()
-      if not event:
-        raise Exception("Lost connection to remote device.")
-      state_machine.add_event(event)
-      if not event.is_SYN_REPORT():
-        # we are only processing SYN reports.
-        continue
-      state = state_machine.get_current_snapshot()
+      state = remote_touch.NextSnapshot()
       if len(state.fingers) == 1:
         pressures.append(state.fingers[0].pressure)
       sys.stdout.write("\r%d/%d" % (len(pressures), self.num_samples))
       sys.stdout.flush()
     print
-    remote_touch.EndEventStream()
     return pressures
 
   def GenerateComment(self, average, expected):

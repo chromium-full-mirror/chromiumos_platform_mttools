@@ -1,1 +1,0 @@
-../touch_firmware_test/mt
