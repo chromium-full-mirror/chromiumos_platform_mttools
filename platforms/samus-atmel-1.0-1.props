@@ -1,0 +1,10 @@
+{
+  "gestures": {
+  },
+  "xorg": {
+    "file": "50-touchpad-cmt-samus.conf",
+    "identifiers": ["touchpad samus"]
+  },
+  "ignore": [
+  ]
+}
