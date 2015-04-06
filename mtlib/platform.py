@@ -3,14 +3,15 @@
 # found in the LICENSE file.
 #
 """ This module manages the platform properties in mttools/platforms. """
-from cros_remote import CrOSRemote
-from util import AskUser
-from xorg_conf import XorgInputClassParser
-from util import ExecuteException
+from collections import namedtuple
 import json
 import os
 import re
 import sys
+
+from cros_remote import CrOSRemote
+from util import AskUser, ExecuteException
+from xorg_conf import XorgInputClassParser
 
 # path to current script directory
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -29,6 +30,8 @@ props_template = """\
   ]
 }"""
 
+AbsInfo = namedtuple("AbsInfo", ("min", "max", "res"))
+
 class PlatformProperties(object):
   """ A class containing hardware and xorg properties for a platform.
 
@@ -37,8 +40,7 @@ class PlatformProperties(object):
   'platforms_dir' directory.
   """
   def __init__(self, platform=None, log=None):
-    self.required_axis = []
-    self.has_axis = []
+    self.absinfos = {}
     self.device_class = "touchpad"
     self.properties = {}
     self.ignore_properties = []
@@ -50,75 +52,31 @@ class PlatformProperties(object):
       self.xorg_parser = XorgInputClassParser()
       self._ParseHWProperties(open(self.hwprops_file).read())
       self._ParseProperties(open(self.props_file).read())
-      self._UpdateDimensions()
     elif log:
       self.name = ''
       if log.evdev:
         self._ParseEvdevLog(log.evdev)
-      self._ParseActivityLog(log.activity)
-
-
-  def _ParseActivityLog(self, activity_data):
-    """ Parse property information from an activity log."""
-    activity = json.loads(activity_data)
-    self.properties = activity['properties']
-
-    hwprops = activity['hardwareProperties']
-    self.x_min = int(hwprops['left'])
-    self.x_max = int(hwprops['right'])
-    self.x_res = int(hwprops['xResolution'])
-    self.y_min = int(hwprops['top'])
-    self.y_max = int(hwprops['bottom'])
-    self.y_res = int(hwprops['yResolution'])
 
   def _ParseEvdevLog(self, evdev_data):
     # Look for embedded hwproperties in header. Format:
     # absinfo: axis min max 0 0 res
-    abs_regex = 5 * ' ([-0-9]+)'
-    xregex = re.compile('# absinfo: 53' + abs_regex)
-    xmatch = xregex.search(evdev_data)
-    self.x_min = int(xmatch.group(1))
-    self.x_max = int(xmatch.group(2))
-    self.x_res = int(xmatch.group(5))
-
-    yregex = re.compile('# absinfo: 54' + abs_regex)
-    ymatch = yregex.search(evdev_data)
-    self.y_min = int(ymatch.group(1))
-    self.y_max = int(ymatch.group(2))
-    self.y_res = int(ymatch.group(5))
-
-    axis_regex = re.compile('# absinfo: ([0-9]+)')
-    for match in axis_regex.finditer(evdev_data):
-      self.has_axis.append(int(match.group(1)))
-
-    # look for axes used in the log itself.
-    # The format of ABS (0003) reports is:
-    # timestamp 0003 axis value
-    report_regex = re.compile(' 0003 ([0-9a-f]{4}) ([0-9a-f]+)')
-    for match in report_regex.finditer(evdev_data):
-      axis = int(match.group(1), 16)
-      if axis not in self.required_axis:
-        self.required_axis.append(axis)
-
+    values_regex = 6 * ' ([-0-9]+)'
+    abs_regex = re.compile('# absinfo:' + values_regex)
+    for match in abs_regex.finditer(evdev_data):
+      axis = int(match.group(1))
+      info = AbsInfo(min=int(match.group(2)), max=int(match.group(3)),
+                     res=int(match.group(6)))
+      self.absinfos[axis] = info
 
   def _ParseHWProperties(self, data):
     """Parse x and y dimensions and resolution from hwprops file."""
-    abs_regex = 5 * ' ([0-9\\-]+)'
-    xregex = re.compile('A: 35' + abs_regex)
-    xmatch = xregex.search(data)
-    self.x_min = int(xmatch.group(1))
-    self.x_max = int(xmatch.group(2))
-    self.x_res = int(xmatch.group(5))
-
-    yregex = re.compile('A: 36' + abs_regex)
-    ymatch = yregex.search(data)
-    self.y_min = int(ymatch.group(1))
-    self.y_max = int(ymatch.group(2))
-    self.y_res = int(ymatch.group(5))
-
-    axis_regex = re.compile('A: ([0-9a-f]+)')
-    for match in axis_regex.finditer(data):
-      self.has_axis.append(int(match.group(1), 16))
+    values_regex = 6 * ' ([0-9\\-a-fA-F]+)'
+    abs_regex = re.compile('A:' + values_regex)
+    for match in abs_regex.finditer(data):
+      axis = int(match.group(1), 16)
+      info = AbsInfo(min=int(match.group(2)), max=int(match.group(3)),
+                     res=int(match.group(6)))
+      self.absinfos[axis] = info
 
   def _ParseProperties(self, data):
     """ Parse properties from file and inject xorg properties. """
@@ -165,36 +123,6 @@ class PlatformProperties(object):
       if prop in self.properties:
         del self.properties[prop]
 
-  def _UpdateDimensions(self):
-    """ Update x/y min/max with xorg properties.
-
-    CMT allows hardware properties to be overwritten by xorg properties.
-    Do the same in this class.
-    """
-    if 'Active Area Left' in self.properties:
-      self.x_min = int(self.properties['Active Area Left'])
-    if 'Active Area Right' in self.properties:
-      self.x_max = int(self.properties['Active Area Right'])
-    if 'Active Area Top' in self.properties:
-      self.y_min = int(self.properties['Active Area Top'])
-    if 'Active Area Bottom' in self.properties:
-      self.y_max = int(self.properties['Active Area Bottom'])
-
-    if 'Horizontal Resolution' in self.properties:
-      self.x_res = int(self.properties['Horizontal Resolution'])
-    if 'Vertical Resolution' in self.properties:
-      self.y_res = int(self.properties['Vertical Resolution'])
-
-    if 'SemiMT Non Linear Area Left' in self.properties:
-      self.x_min = int(self.properties['SemiMT Non Linear Area Left'])
-    if 'SemiMT Non Linear Area Right' in self.properties:
-      self.x_max = int(self.properties['SemiMT Non Linear Area Right'])
-    if 'SemiMT Non Linear Area Top' in self.properties:
-      self.y_min = int(self.properties['SemiMT Non Linear Area Top'])
-    if 'SemiMT Non Linear Area Bottom' in self.properties:
-      self.y_max = int(self.properties['SemiMT Non Linear Area Bottom'])
-
-
   def Match(self, other, loose, debug=False):
     """ Compare properties and return similarity.
 
@@ -205,44 +133,32 @@ class PlatformProperties(object):
     prevent property adjustments to cause platforms to be mismatched.
     """
     scores = []
-    def compare(a, b, what):
-      value = abs(float(a) - float(b))
-      if value > 0:
-        value = min(1, value / max(abs(float(a)), abs(float(b))))
-      scores.append(1-value)
-      if debug:
-        print "%s: %s == %s" % (what, str(a), str(b))
-    def compare_attr(what):
-      compare(getattr(self, what), getattr(other, what), what)
-    def compare_prop(what):
-      if what not in self.properties or what not in other.properties:
-        scores.append(0)
-      else:
-        compare(self.properties[what], other.properties[what], what)
-    def check_axis(required, available):
-      for axis in required:
-        if axis not in available:
-          scores.append(0)
-          return
+    def compare_absinfo_prop(a, b, field):
+      a_value = float(getattr(a, field)) if a else None
+      b_value = float(getattr(b, field)) if b else None
 
-    compare_attr('x_min')
-    compare_attr('x_max')
-    compare_attr('x_res')
-    compare_attr('y_min')
-    compare_attr('y_max')
-    compare_attr('y_res')
-    if not loose:
-      compare_prop('Pressure Calibration Offset')
+      score = 0.0
+      if a_value is not None and b_value is not None:
+        delta = abs(float(a_value) - float(b_value))
+        if delta > 0:
+          score = 1.0 - min(1.0, delta / max(abs(a_value), abs(b_value)))
+        else:
+          score = 1.0
+      scores.append(score)
 
-    if self.required_axis:
+      a_str = str(a_value) if a_value is not None else "N/A"
+      b_str = str(b_value) if b_value is not None else "N/A"
       if debug:
-        print "axis:", self.required_axis, "in", other.has_axis
-      check_axis(self.required_axis, other.has_axis)
+        print "  %s: %.2f (%s == %s)" % (field, score, a_str, b_str)
 
-    if other.required_axis:
+    for axis in set(self.absinfos.keys() + other.absinfos.keys()):
       if debug:
-        print "axis:", other.required_axis, "in", self.has_axis
-      check_axis(other.required_axis, self.has_axis)
+        print "axis %d:" % axis
+      self_absinfo = self.absinfos.get(axis, None)
+      other_absinfo = other.absinfos.get(axis, None)
+      compare_absinfo_prop(self_absinfo, other_absinfo, "min")
+      compare_absinfo_prop(self_absinfo, other_absinfo, "max")
+      compare_absinfo_prop(self_absinfo, other_absinfo, "res")
 
     return reduce(lambda x, y: (x * y), scores)
 
@@ -271,7 +187,7 @@ class PlatformDatabase(object):
     properties = PlatformProperties(log=log)
     for name, platform in self.platforms.items():
       if debug:
-        print "#" * 10, name
+        print "-" * 30, name
       score = platform.Match(properties, loose, debug)
       if debug:
         print name, "score =", score
