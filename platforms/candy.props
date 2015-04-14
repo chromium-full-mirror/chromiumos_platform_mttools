@@ -1,0 +1,10 @@
+{
+  "gestures": {
+  },
+  "xorg": {
+    "file": "50-touchpad-cmt-candy.conf",
+    "identifiers": ["touchpad candy elan"]
+  },
+  "ignore": [
+  ]
+}
