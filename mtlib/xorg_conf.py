@@ -59,8 +59,8 @@ class XorgConfBuilder(object):
 
     if not existing:
       print "Installing firmware_TouchMTB on device"
-      cmd = ("sh run_remote_tests.sh --autotest_dir {} " +
-             "--remote={} firmware_TouchMTBSetup")
+      cmd = ("sh test_that --autotest_dir {} " +
+             "{} firmware_TouchMTBSetup")
       cmd = cmd.format(autotest_dir, remote.ip)
       SafeExecute(cmd, cwd=scripts_dir, verbose=True)
 
