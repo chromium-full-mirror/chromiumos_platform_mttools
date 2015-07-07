@@ -245,10 +245,9 @@ class PlatformDatabase(object):
                                       "evemu-describe /dev/input/%s |grep N:" % d,
                                       verbose=False)
            event_number = (d.split("event", 1))[1]
-           device_desc_evemu = device_desc_evemu.split("N:",1)[1]   
-           if "Touchpad" in device_desc_evemu:
+           device_desc_evemu = device_desc_evemu.split("N:",1)[1]
+           if "Touchpad" in device_desc_evemu or "Trackpad" in device_desc_evemu:
                touchdevices.append([event_number, device_desc_evemu])
-       
        idx = AskUser.Select([t[1] for t in touchdevices],
                             "Which device would you like to register?")
        device_id = touchdevices[idx][0]
