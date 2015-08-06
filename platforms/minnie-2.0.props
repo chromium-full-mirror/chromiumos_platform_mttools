@@ -1,0 +1,10 @@
+{
+  "gestures": {
+  },
+  "xorg": {
+    "file": "60-touchpad-cmt-veyron_minnie.conf",
+    "identifiers": ["touchpad veyron_minnie elan"]
+  },
+  "ignore": [
+  ]
+}
