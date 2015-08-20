@@ -1,0 +1,10 @@
+{
+  "gestures": {
+  },
+  "xorg": {
+    "file": "50-touchpad-cmt-lulu.conf",
+    "identifiers": ["touchpad lulu synaptics"]
+  },
+  "ignore": [
+  ]
+}
