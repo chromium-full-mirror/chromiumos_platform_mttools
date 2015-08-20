@@ -235,31 +235,32 @@ class PlatformDatabase(object):
            "/opt/google/input/inputcontrol --id %s --hwprops" % device_id,
            verbose=True)
     else:
-       devices = remote.SafeExecute(
+       event_devices = remote.SafeExecute(
                         "ls /dev/input/ | grep event",
                         verbose=True)
-       devices = devices.splitlines()
-       touchdevices = []
-       for d in devices:
+       event_devices = event_devices.splitlines()
+       devices = []
+       for d in event_devices:
            device_desc_evemu = remote.SafeExecute(
                                       "evemu-describe /dev/input/%s |grep N:" % d,
                                       verbose=False)
-           event_number = (d.split("event", 1))[1]
+           event_number = int((d.split("event", 1))[1])
            device_desc_evemu = device_desc_evemu.split("N:",1)[1]
-           if "Touchpad" in device_desc_evemu or "Trackpad" in device_desc_evemu:
-               touchdevices.append([event_number, device_desc_evemu])
-       idx = AskUser.Select([t[1] for t in touchdevices],
+
+           devices.append([event_number, device_desc_evemu])
+
+       idx = AskUser.Select([t[1] for t in devices],
                             "Which device would you like to register?")
-       device_id = touchdevices[idx][0]
+       device_id = devices[idx][0]
        hwprops = remote.SafeExecute(
-                        "evemu-describe /dev/input/event%s" % touchdevices[idx][0],
+                        "evemu-describe /dev/input/event%s" % devices[idx][0],
                         verbose=True)
     if not hwprops:
        print "Please update your device to latest canary or:"
        print " emerge-${BOARD} inputcontrol"
        print " cros deploy $DEVICE_IP inputcontrol"
        return None
-      
+
 
     xorg_files = [
         "/etc/X11/xorg.conf.d/60-touchpad-cmt-*.conf",
