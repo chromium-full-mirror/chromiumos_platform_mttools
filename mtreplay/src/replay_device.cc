@@ -163,11 +163,18 @@ void ReplayDevice::GestureCallback(const struct Gesture* gesture) {
     case kGestureTypeSwipe:
       fprintf(fp, "Swipe dx=%d", static_cast<int>(gesture->details.swipe.dx));
       break;
+    case kGestureTypeFourFingerSwipe:
+      fprintf(fp, "Four Finger Swipe dx=%d",
+              static_cast<int>(gesture->details.four_finger_swipe.dx));
+      break;
     case kGestureTypePinch:
       fprintf(fp, "Pinch dz=%d", static_cast<int>(gesture->details.pinch.dz));
       break;
     case kGestureTypeSwipeLift:
       fprintf(fp, "Swipe Lift");
+      break;
+    case kGestureTypeFourFingerSwipeLift:
+      fprintf(fp, "Four Finger Swipe Lift");
       break;
     case kGestureTypeMetrics:
       fprintf(fp, "Metrics type=%d (%f, %f)",

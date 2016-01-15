@@ -63,6 +63,13 @@ class GestureLog(object):
       elif gesture['gestureType'] == 'swipeLift':
         events.append(SwipeLiftGesture(start_time, end_time))
 
+      elif gesture['gestureType'] == 'fourFingerSwipe':
+        events.append(FourFingerSwipeGesture(gesture['dx'], gesture['dy'],
+                                             start_time, end_time))
+
+      elif gesture['gestureType'] == 'fourFingerSwipeLift':
+        events.append(FourFingerSwipeLiftGesture(start_time, end_time))
+
       elif gesture['gestureType'] == 'fling':
         if gesture['flingState'] == 1:
           events.append(FlingStopGesture(start_time, end_time))
@@ -84,7 +91,8 @@ class GestureLog(object):
     for event in event_list:
       # merge motion and scroll events into gestures
       if (event.type == 'Motion' or event.type == 'Scroll' or
-          event.type == 'Swipe' or event.type == 'Pinch'):
+          event.type == 'Swipe' or event.type == 'Pinch' or
+          event.type == 'FourFingerSwipe'):
         if event.type not in last_event_of_type:
           last_event_of_type[event.type] = event
           gestures.append(event)
@@ -245,6 +253,12 @@ class SwipeGesture(MotionGesture):
   type = 'Swipe'
 
 
+class FourFingerSwipeGesture(MotionGesture):
+  """ The FourFingerSwipe gesture is functionally the same as the
+  MotionGesture """
+  type = 'FourFingerSwipe'
+
+
 class FlingGesture(MotionGesture):
   """ The scroll gesture is functionally the same as the MotionGesture """
   type = 'Fling'
@@ -268,6 +282,21 @@ class FlingStopGesture(object):
 class SwipeLiftGesture(object):
   """ The SwipeLift gesture only contains the start and end timestamp. """
   type = 'SwipeLift'
+
+  def __init__(self, start, end):
+    self.start = start
+    self.end = end
+
+  def __str__(self):
+    return self.__class__.type
+
+  def __repr__(self):
+    return str(self)
+
+class FourFingerSwipeLiftGesture(object):
+  """ The FourFingerSwipeLift gesture only contains the start and
+  end timestamp. """
+  type = 'FourFingerSwipeLift'
 
   def __init__(self, start, end):
     self.start = start
