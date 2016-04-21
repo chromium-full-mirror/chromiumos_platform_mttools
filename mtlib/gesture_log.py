@@ -236,7 +236,7 @@ class ScrollGesture(MotionGesture):
 class PinchGesture(AxisGesture):
   """ The pinch gesture is functionally the same as the MotionGesture.
 
-  However only uses the dx variable to represent the zoom factor.
+  However only uses the dz variable to represent the zoom factor.
   """
   type = 'Pinch'
 
@@ -246,6 +246,14 @@ class PinchGesture(AxisGesture):
   def __str__(self):
     fstr = '{0} dz={1:.4g} r={2:.4g}'
     return fstr.format(self.__class__.type, self.dz, self.Roughness())
+
+  def Append(self, motion):
+    self.dx = self.dx + motion.dx
+    self.dy = self.dy + motion.dy
+    self.dz = self.dz * max(motion.dz, 1 / motion.dz)
+    self.distance = self.dz
+    self.segments.append(motion.distance)
+    self.end = motion.end
 
 
 class SwipeGesture(MotionGesture):
