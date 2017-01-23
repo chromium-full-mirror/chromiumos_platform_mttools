@@ -93,7 +93,12 @@ void ReplayDevice::VLog(ReplayDeviceConfig::LogCategory category,
                        const char* format, va_list args) {
   Stream& stream = config_->log[category];
   if (stream.Good()) {
+    // Disable warning: format string is not a string literal.
+    // https://crbug.com/684114
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wformat-nonliteral"
     vfprintf(stream.GetFP(), format, args);
+    #pragma GCC diagnostic pop
   }
 }
 
