@@ -1,0 +1,10 @@
+{
+  "gestures": {
+  },
+  "xorg": {
+    "file": "40-touchpad-cmt.conf",
+    "identifiers": ["CMT for Elan Touchpad"]
+  },
+  "ignore": [
+  ]
+}
