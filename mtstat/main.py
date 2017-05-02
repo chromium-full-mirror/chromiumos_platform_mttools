@@ -108,9 +108,6 @@ def main():
   parser.add_option('-d', '--download',
                     dest='download', default=None,
                     help='download more log files')
-  parser.add_option('-o', '--offset',
-                    dest='offset', default=0,
-                    help='offset for downloading log files')
   parser.add_option('-n', '--number',
                     dest='number', default=None,
                     help='number of log files to gather stats on')
@@ -141,7 +138,7 @@ def main():
 
   stat = MTStat()
   if options.download:
-    stat.Download(options.download, options.offset)
+    stat.Download(options.download)
     return
 
   number = None if options.number is None else int(options.number)

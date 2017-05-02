@@ -4463,7 +4463,6 @@ secret_obj = {
       "Pressure Calibration Offset": -42.2,
       "Pressure Calibration Slope": 1.61,
       "Scroll Accel Curve": "",
-      "Scroll Stationary Finger Max Distance": 1.0,
       "Sensitivity": 3,
       "Tap Drag Timeout": 0.7,
       "Tap Enable": true,

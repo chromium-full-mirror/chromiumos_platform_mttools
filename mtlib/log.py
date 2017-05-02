@@ -120,11 +120,12 @@ class FeedbackLog(AbstractLog):
   Downloads logs and (possibly) screenshot from a feedback id or file name
   """
   def __init__(self, id_or_filename, screenshot=False, download=False,
-               force_latest=None):
+               force_latest=None, downloader=None):
     AbstractLog.__init__(self)
     self.force_latest = force_latest
     self.try_screenshot = screenshot
     self.report = None
+    self.downloader = downloader
 
     if id_or_filename.endswith('.zip') or id_or_filename.endswith('.bz2'):
       self.report = open(id_or_filename).read()
@@ -135,7 +136,8 @@ class FeedbackLog(AbstractLog):
         # No corresponding screenshot available.
         pass
     else:
-      self.downloader = FeedbackDownloader()
+      if not self.downloader:
+        self.downloader = FeedbackDownloader()
       self.report = self.downloader.DownloadSystemLog(id_or_filename)
       if self.try_screenshot:
         self.image = self.downloader.DownloadScreenshot(id_or_filename)

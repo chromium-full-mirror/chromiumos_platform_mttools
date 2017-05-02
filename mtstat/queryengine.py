@@ -12,11 +12,13 @@ import random
 import re
 import traceback
 import urllib
+import datetime
 
 
 # prepare folder for log files
 script_dir = os.path.dirname(os.path.realpath(__file__))
 log_dir = os.path.join(script_dir, '../cache/logs/')
+invalid_filename = os.path.join(log_dir, 'invalid')
 if not os.path.exists(log_dir):
   os.mkdir(log_dir)
 
@@ -167,57 +169,78 @@ class QueryEngine(object):
       files = random.sample(files, number)
     return files
 
-  def DownloadFile(self, id):
-    """Download one feedback log into the pool."""
-    downloader = FeedbackDownloader()
+  def GetInvalidIDs(self):
+    """Look for list of feedback IDs with invalid logs"""
+    if not os.path.exists(invalid_filename):
+      return []
+    return [x.strip() for x in open(invalid_filename).readlines()]
 
+  def DownloadFile(self, id, downloader, invalid_ids):
+    """Download one feedback log into the pool.
+
+    Return 1 if successful, 0 if not.
+    """
     filename = os.path.join(log_dir, id)
     if os.path.exists(filename):
       print 'Skipping existing report', id
-      return
+      return 0
+    if id in invalid_ids:
+      print 'Skipping invalid report', id
+      return 0
 
     print 'Downloading new report', id
     try:
       # might throw IO/Tar/Zip/etc exceptions
-      report = FeedbackLog(id, force_latest='pad')
+      report = FeedbackLog(id, force_latest='pad', downloader=downloader)
       # Test parse. Will throw exception on malformed log
       json.loads(report.activity)
     except:
-      print 'Invalid report %s' % id
-      return
+      print 'Invalid report', id
+      with open(invalid_filename, 'a') as f:
+        f.write(id + '\n')
+      return 0
 
     # check if report contains logs and actual events
     if report.activity and report.evdev and 'E:' in report.evdev:
       report.SaveAs(filename)
+      return 1
     else:
       print 'Invalid report %s' % id
+      with open(invalid_filename, 'a') as f:
+        f.write(id + '\n')
+      return 0
 
-  def Download(self, num, offset=0, parallel=True):
+  def Download(self, num_to_download, parallel=True):
     """Download 'num' new feedback logs into the pool."""
     downloader = FeedbackDownloader()
 
-    # download list of feedback report id's
-    params = {
-      '$limit': str(num),
-      '$offset': str(offset),
-      'mapping': ':list',
-      'productId': '208'  # ChromeOS
-    }
-    url = ('https://feedback.corp.google.com/resty/ReportSearch?' +
-           urllib.urlencode(params))
-    data = downloader.DownloadFile(url)
-    data = data[data.find('{'):]  # strip garbage before json data
+    dt = datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)
+    end_time = (((dt.days * 24 * 60 * 60 + dt.seconds) * 1000) +
+                (dt.microseconds / 10))
+    num_to_download = int(num_to_download)
+    num_downloaded = 0
+    invalid_ids = self.GetInvalidIDs()
+    page_token = ''
 
-    reports_json = json.loads(data)
-    report_ids = [item['id'] for item in reports_json['results']]
+    while num_to_download > num_downloaded:
+      # Download list of feedback report id's
+      num_this_iteration = min((num_to_download - num_downloaded) * 5, 500)
+      page_token, report_ids = downloader.DownloadIDs(
+          num_this_iteration, end_time, page_token)
 
-    # Download and check each report
-    if parallel:
-      pool = multiprocessing.Pool()
-      results = pool.map(DownloadFileSubprocess, report_ids)
-      pool.terminate()
-    else:
-      results = map(DownloadFileSubprocess, report_ids)
+      # Download and check each report
+      parameters = [(r_id, downloader, invalid_ids) for r_id in report_ids]
+      if parallel:
+        pool = multiprocessing.Pool()
+        results = sum(pool.map(DownloadFileSubprocess, parameters))
+        pool.terminate()
+      else:
+        results = sum(map(DownloadFileSubprocess, parameters))
+      num_downloaded += results
+      print "--------------------"
+      print "%d/%d reports found" % (num_downloaded, num_to_download)
+      print "--------------------"
+
 
 def GetPlatformSubprocess(filename):
   replay = MTReplay()
@@ -237,11 +260,10 @@ def ExecuteSingleSubprocess(args):
     traceback.print_exc()
     raise e
 
-
-def DownloadFileSubprocess(id):
+def DownloadFileSubprocess(args):
   """ Wrapper for subprocesses to run DownloadFile """
   try:
-    return QueryEngine().DownloadFile(id)
+    return QueryEngine().DownloadFile(args[0], args[1], args[2])
   except Exception, e:
     traceback.print_exc()
     raise e

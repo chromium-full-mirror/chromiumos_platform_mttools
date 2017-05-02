@@ -226,8 +226,8 @@ class MTStat(object):
       histograms[key] = self._Histogram(values, num_bins)
     return OrderedDict(sorted(histograms.items(), key=lambda t: t[0]))
 
-  def Download(self, num, offset, parallel=True):
-    QueryEngine().Download(num, offset, parallel)
+  def Download(self, num, parallel=True):
+    QueryEngine().Download(num, parallel)
 
   def _Histogram(self, values, num_bins):
     def RawHistogram(values):
