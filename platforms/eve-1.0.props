@@ -1,0 +1,10 @@
+{
+  "gestures": {
+  },
+  "xorg": {
+    "file": "50-touchpad-cmt-eve.conf",
+    "identifiers": ["touchpad eve"]
+  },
+  "ignore": [
+  ]
+}
