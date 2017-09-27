@@ -231,7 +231,7 @@ class FirmwarePackage(object):
     out = self.ebuild_file.Open("w")
     out.write(ebuild[:begin])
     out.write("{\n")
-    out.write("\tcros-binary_src_install\n\n")
+    out.write("\tinsinto /\ndoins -r */*\n")
 
     for line in dosym_lines:
       out.write("\t{}\n".format(line))
