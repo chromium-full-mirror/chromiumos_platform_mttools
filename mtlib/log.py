@@ -207,6 +207,10 @@ class FeedbackLog(AbstractLog):
       # base64 decode
       activity_tar_data = base64.b64decode(activity_tar_enc)
 
+      if activity_tar_data == '':
+        print 'touch{0}_activity_log.tar found, but empty'.format(interface)
+        return []
+
       # untar
       activity_tar_file = tarfile.open(fileobj=StringIO(activity_tar_data))
 
