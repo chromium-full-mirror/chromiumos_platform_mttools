@@ -62,6 +62,7 @@ setup-in-place:
 clean-in-place:
 	$(foreach dep, $(IN_PLACE_DEPS), OUT=. make -C $(dep) clean-in-place;)
 
+in-place: export CXX = clang++
 in-place:
 	# can't use foreach loop here, otherwise make errors will be ignored.
 	OUT=. make -C ../libevdev in-place

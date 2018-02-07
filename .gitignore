@@ -1,0 +1,5 @@
+*.pyc
+mtreplay/src/*.o
+mtreplay/src/*.d
+mtreplay/src/*.depends
+mtreplay/replay
