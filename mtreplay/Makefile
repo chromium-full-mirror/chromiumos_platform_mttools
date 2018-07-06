@@ -13,6 +13,7 @@ install:
 	install -D -m 0755 $(OUT)/replay $(DESTDIR)/replay
 
 setup-in-place:
+	sudo emerge utouch-evemu
 clean-in-place: CLEAN(replay)
 in-place: CXX_BINARY(replay)
 
