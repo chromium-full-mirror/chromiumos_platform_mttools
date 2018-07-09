@@ -216,13 +216,7 @@ class FeedbackLog(AbstractLog):
 
       def ExtractPadFiles(name):
         # find matching evdev file
-        evdev_name = name[0:name.index('touchpad_activity')]
-        evdev_name = evdev_name + 'cmt_input_events'
-
-        for file_name in activity_tar_file.getnames():
-          if file_name.startswith(evdev_name):
-            evdev_name = file_name
-            break
+        evdev_name = name.replace('touchpad_activity', 'cmt_input_events')
 
         activity_gz = activity_tar_file.extractfile(name)
         evdev_gz = activity_tar_file.extractfile(evdev_name)
