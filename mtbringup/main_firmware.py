@@ -4,6 +4,8 @@
 # found in the LICENSE file.
 """Common command line options for mtbringup tools."""
 
+from __future__ import print_function
+
 from common import (MTBringupTool,
                     MTBringupArgumentParser,
                     ExecuteCommonCommands,
@@ -34,8 +36,8 @@ class FirmwareTool(MTBringupTool):
     binary.ForceUpdate(device, self.remote)
 
     device.Refresh(self.remote)
-    print "Updated device information:"
-    print device
+    print("Updated device information:")
+    print(device)
 
   def DownloadBinaries(self):
     binaries = self.package.GetExistingBinaries()
@@ -45,7 +47,7 @@ class FirmwareTool(MTBringupTool):
   def PrepareBinary(self, device, binary):
     self.ForceUpdate(device, binary)
     binary.UpdateName(device.hw_version, device.fw_version)
-    print "Renamed binary to: {}".format(binary.filename)
+    print("Renamed binary to: {}".format(binary.filename))
 
   def GenerateEbuildPackage(self, new_version, binaries, clean):
     for binary in binaries:
@@ -76,35 +78,35 @@ class FirmwareTool(MTBringupTool):
     self.package.UpdateEbuildFile(self.remote, regenerate=clean)
 
     tar_file = self.package.GenerateBCSPackage(new_version)
-    print "Upload the package {} to the following url".format(tar_file.basename)
-    print "  https://www.google.com/chromeos/partner/fe/#bcUpload:type=PRIVATE"
-    print "Using the following values:"
-    print "  Overlay:", self.package.overlay.basename
-    print "  Relative path: chromeos-base/" + self.package.ebuild_name
+    print("Upload the package", tar_file.basename, "to the following URL:")
+    print("  https://www.google.com/chromeos/partner/fe/#bcUpload:type=PRIVATE")
+    print("Using the following values:")
+    print("  Overlay:", self.package.overlay.basename)
+    print("  Relative path: chromeos-base/" + self.package.ebuild_name)
 
   def Status(self):
-    print "Firmware Ebuild Status:"
-    print "  Ebuild: {}".format(self.package.ebuild_file)
+    print("Firmware Ebuild Status:")
+    print("  Ebuild: {}".format(self.package.ebuild_file))
     if not self.package.ebuild_file.exists:
-      print "  Ebuild does not exist."
+      print("  Ebuild does not exist.")
       return
-    print "  Ebuild version: {}".format(self.package.ebuild_version)
-    print "  GIT branch: {}".format(self.package.ebuild_repo.active_branch)
-    print "  GIT status: {}".format(self.package.ebuild_repo.status)
-    print "  Firmware binaries:"
+    print("  Ebuild version: {}".format(self.package.ebuild_version))
+    print("  GIT branch: {}".format(self.package.ebuild_repo.active_branch))
+    print("  GIT status: {}".format(self.package.ebuild_repo.status))
+    print("  Firmware binaries:")
     existing = self.package.GetExistingBinaries()
     for binary in existing:
-      print "    {}".format(binary)
-    print "  BCS URL: {}".format(self.package.bcs_url)
+      print("    {}".format(binary))
+    print("  BCS URL: {}".format(self.package.bcs_url))
 
   def Verify(self):
     self.emerge.Deploy(self.package.ebuild_name, self.remote)
-    print "Verifying firmware symlinks and binaries"
+    print("Verifying firmware symlinks and binaries")
     self.package.VerifySymlinks(self.remote)
-    print "Forcing firmware updates"
+    print("Forcing firmware updates")
     for device in self.device_info.touch_devices.values():
       device.ForceFirmwareUpdate(self.remote)
-    print "Checking firmware version numbers"
+    print("Checking firmware version numbers")
     self.package.VerifyFirmwareVersions(self.remote)
 
   def Prepare(self):
@@ -183,10 +185,10 @@ def main():
     files = args.ebuild or args.clean_ebuild
     new_version = args.version
     if not new_version:
-      print "Enter the new version number of this ebuild:"
+      print("Enter the new version number of this ebuild:")
       current_version = tool.package.ebuild_version
       if current_version:
-        print "(The current version is: {})".format(current_version)
+        print("(The current version is: {})".format(current_version))
         # todo(denniskempin): automatically increment x.x or x.x-rx version
       new_version = AskUser.Text()
       if not new_version:

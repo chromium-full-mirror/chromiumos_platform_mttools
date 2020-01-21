@@ -2,6 +2,9 @@
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
+from __future__ import print_function
+
 from mtlib.log import FeedbackDownloader, FeedbackLog, Log
 from mtreplay import MTReplay
 import fnmatch
@@ -86,7 +89,7 @@ class QueryEngine(object):
     # find platform for file
     platform = replay.PlatformOf(log)
     if not platform:
-      print 'No platform for %s' % os.path.basename(filename)
+      print("No platform for %s" % os.path.basename(filename))
       return result
 
     # count the number of syn reports in log file
@@ -113,7 +116,7 @@ class QueryEngine(object):
     parallel: set to False to execute sequentially.
     """
 
-    print "Processing %d log files" % len(filenames)
+    print("Processing %d log files" % len(filenames))
 
     if hasattr(queries, 'FindMatches'):
       queries = dict([(filename, queries) for filename in filenames])
@@ -141,7 +144,7 @@ class QueryEngine(object):
     # syn reports are coming at approx 60 Hz on most platforms
     syn_per_second = 60.0
     hours = syn_count / syn_per_second / 60.0 / 60.0
-    print "Processed ~%.2f hours of interaction" % hours
+    print("Processed ~%.2f hours of interaction" % hours)
 
     return result_dict
 
@@ -153,7 +156,7 @@ class QueryEngine(object):
              if f.isdigit()]
 
     if platform:
-      print "Filtering files by platform. This may take a while."
+      print("Filtering files by platform. This may take a while.")
       replay = MTReplay()
       pool = multiprocessing.Pool()
       platforms = pool.map(GetPlatformSubprocess, files)
@@ -162,7 +165,7 @@ class QueryEngine(object):
       filtered = filter(lambda (f, p): p and fnmatch.fnmatch(p, platform),
                         platforms)
       files = map(lambda (f, p): f, filtered)
-      print "found", len(files), "log files matching", platform
+      print("found", len(files), "log files matching", platform)
 
     # randomly select subset of files
     if number is not None:
@@ -182,20 +185,20 @@ class QueryEngine(object):
     """
     filename = os.path.join(log_dir, id)
     if os.path.exists(filename):
-      print 'Skipping existing report', id
+      print("Skipping existing report", id)
       return 0
     if id in invalid_ids:
-      print 'Skipping invalid report', id
+      print("Skipping invalid report", id)
       return 0
 
-    print 'Downloading new report', id
+    print("Downloading new report", id)
     try:
       # might throw IO/Tar/Zip/etc exceptions
       report = FeedbackLog(id, force_latest='pad', downloader=downloader)
       # Test parse. Will throw exception on malformed log
       json.loads(report.activity)
     except:
-      print 'Invalid report', id
+      print("Invalid report", id)
       with open(invalid_filename, 'a') as f:
         f.write(id + '\n')
       return 0
@@ -205,7 +208,7 @@ class QueryEngine(object):
       report.SaveAs(filename)
       return 1
     else:
-      print 'Invalid report %s' % id
+      print("Invalid report %s" % id)
       with open(invalid_filename, 'a') as f:
         f.write(id + '\n')
       return 0
@@ -237,9 +240,9 @@ class QueryEngine(object):
       else:
         results = sum(map(DownloadFileSubprocess, parameters))
       num_downloaded += results
-      print "--------------------"
-      print "%d/%d reports found" % (num_downloaded, num_to_download)
-      print "--------------------"
+      print("--------------------")
+      print("%d/%d reports found" % (num_downloaded, num_to_download))
+      print("--------------------")
 
 
 def GetPlatformSubprocess(filename):
@@ -247,7 +250,7 @@ def GetPlatformSubprocess(filename):
   log = Log(filename)
   detected_platform = replay.PlatformOf(log)
   if detected_platform:
-    print filename + ": " + detected_platform.name
+    print(filename + ": " + detected_platform.name)
     return filename, detected_platform.name
   else:
     return filename, None

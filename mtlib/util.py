@@ -7,6 +7,9 @@
 This includes tools for regular expressions, path processing, chromium os git
 repositories, shell commands, and user interaction via command line.
 """
+
+from __future__ import print_function
+
 import os
 import re
 import shlex
@@ -218,7 +221,7 @@ def __Execute(command, cwd=None, verbose=False, interactive=False):
     cwd = str(cwd)
 
   if verbose:
-    print "$", " ".join(command)
+    print("$", " ".join(command))
 
   if interactive:
     process = subprocess.Popen(command, cwd=cwd)
@@ -237,7 +240,7 @@ def __Execute(command, cwd=None, verbose=False, interactive=False):
         seconds = seconds - 1
         sys.stdout.write(".")
         sys.stdout.flush()
-    print ""
+    print("")
   else:
     process.wait()
 
@@ -291,7 +294,7 @@ class GitRepo(object):
     regex = "(\\S+)$"
     for match in re.finditer(regex, result):
       branches.append(match.group(1))
-    print "Branches:", branches
+    print("Branches:", branches)
     return branches
 
   @property
@@ -388,7 +391,7 @@ class AskUser(object):
     """Ask user to input a text."""
     while True:
       if message:
-        print message
+        print(message)
       reply = sys.stdin.readline().strip()
       if len(reply) == 0:
         return default
@@ -396,7 +399,7 @@ class AskUser(object):
         try:
           reply = validate(reply)
         except Exception, e:
-          print e
+          print(e)
           continue
       return reply
 
@@ -409,9 +412,9 @@ class AskUser(object):
   def YesNo(message, default=False):
     """Ask user to reply with yes or no."""
     if default is True:
-      print message, "[Y/n]"
+      print(message, "[Y/n]")
     else:
-      print message, "[y/N]"
+      print(message, "[y/N]")
     choice = sys.stdin.readline().strip()
     if choice in ("y", "Y", "Yes", "yes"):
       return True
@@ -456,13 +459,13 @@ class AskUser(object):
     # repeat until user made a valid selection
     while True:
       # get user input (displays index + 1).
-      print msg
+      print(msg)
       for i, item in enumerate(choices):
-        print " ", str(i + 1) + ":", item
+        print(" ", str(i + 1) + ":", item)
       if allow_multi:
-        print "(Separate multiple selections with spaces)"
+        print("(Separate multiple selections with spaces)")
       if allow_none:
-        print "(Press enter to select none)"
+        print("(Press enter to select none)")
 
       sys.stdout.write('> ')
       sys.stdout.flush()
@@ -481,10 +484,10 @@ class AskUser(object):
         try:
           idx = int(selection) - 1
           if idx < 0 or idx >= len(choices):
-            print 'Number out of range'
+            print("Number out of range")
             return None
         except ValueError:
-          print 'Not a number'
+          print("Not a number")
           return None
         return idx
 

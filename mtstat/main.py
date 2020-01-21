@@ -2,6 +2,9 @@
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
+from __future__ import print_function
+
 from mtedit import MTEdit
 from mtlib import Log
 from mtreplay import MTReplay
@@ -153,12 +156,12 @@ def main():
                             regex=options.regex, number=number,
                             platform=options.platform)
 
-    print "Found occurences in %d files" % len(results)
-    print "Serving results, press CTRL-C to abort"
+    print("Found occurences in %d files" % len(results))
+    print("Serving results, press CTRL-C to abort")
     for filename, result in results.items():
-      print "%d occurences in %s:" % (len(result.matches), filename)
+      print("%d occurences in %s:" % (len(result.matches), filename))
       for match in result.matches:
-        print "    ", match
+        print("    ", match)
 
       # display link to MTEdit session
       if not options.list:
@@ -170,14 +173,14 @@ def main():
   bins = int(options.bins)
   results = stat.GatherStats(number, platform=options.platform, num_bins=bins)
   for key, hist in results.items():
-    print "%s:" % key
+    print("%s:" % key)
     overall_count = sum(hist.values())
     for value, count in hist.items():
       percent = int(round(float(count) / float(overall_count) * 100))
       percent_str = "(" + str(percent) + "%)"
       graph = "=" * int(round(percent / 2))
-      print "  {0:>6} {1:<6} {2:6} |{3}".format(
-          str(value) + ":", count, percent_str, graph)
+      print("  {0:>6} {1:<6} {2:6} |{3}".format(
+          str(value) + ":", count, percent_str, graph))
 
 if __name__ == '__main__':
   main()

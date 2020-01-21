@@ -1,6 +1,9 @@
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
+from __future__ import print_function
+
 import math
 import numpy as np
 import re
@@ -58,20 +61,20 @@ class XorgConfBuilder(object):
       existing = False
 
     if not existing:
-      print "Installing firmware_TouchMTB on device"
+      print("Installing firmware_TouchMTB on device")
       cmd = ("sh test_that --autotest_dir {} " +
              "{} firmware_TouchMTBSetup")
       cmd = cmd.format(autotest_dir, remote.ip)
       SafeExecute(cmd, cwd=scripts_dir, verbose=True)
 
-      print "Executing Pressure Calibration."
-      print "Follow instructions on device"
+      print("Executing Pressure Calibration.")
+      print("Follow instructions on device")
       remote.SafeExecute("XAUTHORITY=\"/home/chronos/.Xauthority\" DISPLAY=:0" +
                          " python main.py -m calibration",
                          cwd="/usr/local/autotest/tests/firmware_TouchMTB",
                          verbose=True)
 
-    print "Uploading data to spreadsheet. This can take a minute."
+    print("Uploading data to spreadsheet. This can take a minute.")
     cmd = ["python", "spreadsheet.py", "-v", "-d", remote.ip,
            "--result-dir=latest", "-n", self.sheet_name]
     SafeExecute(cmd, cwd=pressure_calib_dir, verbose=True, interactive=True)
@@ -150,7 +153,7 @@ class OzoneConfBuilder(object):
 
   def ReadProbePressure(self, remote_touch, probe):
     probe_name = self.ProbeName(probe)
-    print "Move probe %s in circles over the touchpad:" % probe_name
+    print("Move probe %s in circles over the touchpad:" % probe_name)
 
     pressures = []
     remote_touch.FlushSnapshotBuffer()
@@ -160,7 +163,7 @@ class OzoneConfBuilder(object):
         pressures.append(state.fingers[0].pressure)
       sys.stdout.write("\r%d/%d" % (len(pressures), self.num_samples))
       sys.stdout.flush()
-    print
+    print()
     return pressures
 
   def GenerateComment(self, average, expected):

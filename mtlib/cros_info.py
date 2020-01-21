@@ -3,6 +3,8 @@
 # found in the LICENSE file.
 """Classes to extract information about chromebooks and their touch devices."""
 
+from __future__ import print_function
+
 import os
 import re
 

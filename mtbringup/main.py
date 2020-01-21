@@ -4,6 +4,8 @@
 # found in the LICENSE file.
 """Command line interface for MTBringup."""
 
+from __future__ import print_function
+
 from common import MTBringupTool, MTBringupArgumentParser, ExecuteCommonCommands
 from main_firmware import FirmwareTool
 from main_xorg import XorgTool
@@ -15,20 +17,20 @@ class DiscoverTool(MTBringupTool):
     MTBringupTool.__init__(self, args)
 
   def Status(self):
-    print "Board: {}".format(self.board_variant)
+    print("Board: {}".format(self.board_variant))
     if not self.has_remote:
       return
 
-    print "Device IP: {}".format(self.remote.ip)
-    print "Touch devices:"
+    print("Device IP: {}".format(self.remote.ip))
+    print("Touch devices:")
     for device in self.device_info.touch_devices.values():
-      print " - {}:".format(device.name)
-      print "     Device Name: {}".format(device.hw_name)
-      print "     Hardware Version: {}".format(device.hw_version)
-      print "     Firmware Version: {}".format(device.fw_version)
-      print "     I2C Path: {}".format(device.path)
+      print(" - {}:".format(device.name))
+      print("     Device Name: {}".format(device.hw_name))
+      print("     Hardware Version: {}".format(device.hw_version))
+      print("     Firmware Version: {}".format(device.fw_version))
+      print("     I2C Path: {}".format(device.path))
       if device.kernel_device:
-        print "     Kernel Device: {}".format(device.kernel_device)
+        print("     Kernel Device: {}".format(device.kernel_device))
 
 def main():
   usage = "Touch device bringup tools"

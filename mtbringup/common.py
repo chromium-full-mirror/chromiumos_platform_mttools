@@ -4,6 +4,8 @@
 # found in the LICENSE file.
 """Common command line options for mtbringup tools."""
 
+from __future__ import print_function
+
 from mtlib import CrOSRemote
 from mtlib.util import Path, GitRepo, AskUser, Emerge
 from argparse import ArgumentParser
@@ -101,7 +103,7 @@ class MTBringupTool(object):
       return
 
     if repo.working_directory_dirty:
-      print "There are local changes in {}".format(repo.path)
+      print("There are local changes in {}".format(repo.path))
       if AskUser.YesNo("Would you like to stash the changes?", default=False):
         repo.Stash()
       elif AskUser.YesNo("Would you like to discard the changes?",
@@ -113,23 +115,23 @@ class MTBringupTool(object):
 
     branch_name = self.branch_name
     if branch_name in repo.branches:
-      print "Checking out {} in {}".format(branch_name, repo.path)
+      print("Checking out {} in {}".format(branch_name, repo.path))
       repo.Checkout(branch_name)
     else:
-      print "Creating branch {} in {}".format(branch_name, repo.path)
+      print("Creating branch {} in {}".format(branch_name, repo.path))
       repo.CreateBranch(branch_name, "m/master")
 
   def CleanGit(self, path):
     repo = GitRepo(path)
     if self.branch_name in repo.branches:
-      print "Deleting branch {} in {}".format(self.branch_name, repo.path)
+      print("Deleting branch {} in {}".format(self.branch_name, repo.path))
       repo.DeleteBranch(self.branch_name)
 
   def Upload(self, repo):
     review_url = repo.Upload()
     if not review_url:
       review_url = "Not uploaded. Change is up to date."
-    print "Review URL:\n\t", review_url, "\n"
+    print("Review URL:\n\t", review_url, "\n")
 
   def Status(self):
     pass

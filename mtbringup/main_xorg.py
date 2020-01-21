@@ -4,6 +4,8 @@
 # found in the LICENSE file.
 """Common command line options for mtbringup tools."""
 
+from __future__ import print_function
+
 from common import (MTBringupTool,
                     MTBringupArgumentParser,
                     ExecuteCommonCommands,
@@ -42,7 +44,7 @@ class XorgTool(MTBringupTool):
 
   def Verify(self):
     self.emerge.Deploy("xorg-conf", self.remote)
-    print "todo(denniskempin): Verify xorg-conf properties on device"
+    print("todo(denniskempin): Verify xorg-conf properties on device")
 
   def Prepare(self):
     self.PrepareGit(xorg_conf_dir)

@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from __future__ import print_function
+
 import cookielib
 import datetime
 import time
@@ -131,9 +133,9 @@ class FeedbackDownloader():
         time.sleep(sleep_time)
         continue
       elif errorcode != 0:
-        print errors
-        print 'default error'
-        print "An error (%d) occurred while downloading" % errorcode
+        print(errors)
+        print("default error")
+        print("An error (%d) occurred while downloading" % errorcode)
         sys.exit(errorcode)
       return output
 
@@ -148,18 +150,18 @@ class FeedbackDownloader():
     process = subprocess.Popen(cmd, shell=True,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
-    print "Authenticating..."
+    print("Authenticating...")
     output, errors = process.communicate()
     errorcode = process.returncode
 
     if errorcode != 0:
-      print errors
-      print "An error (%d) occurred while authenticating" % errorcode
+      print(errors)
+      print("An error (%d) occurred while authenticating" % errorcode)
       if errorcode == 126:
-        print "You may need to run prodaccess"
+        print("You may need to run prodaccess")
         sys.exit(errorcode)
       return None
-    print "Done Authenticating"
+    print("Done Authenticating")
 
   def DownloadIDs(self, num, end_time=None, page_token=''):
     if not end_time:
@@ -191,13 +193,13 @@ class FeedbackDownloader():
         system_log = re.search('data: "(.*)"\s*', line).group(1)
 
     if not system_log or (system_log[0:2] != "BZ" and system_log[0:2] != "PK"):
-      print "Report " + id + " does not seem to include include log files..."
+      print("Report " + id + " does not seem to include include log files...")
       return None
 
     return self._OctetStreamToBinary(system_log)
 
   def DownloadScreenshot(self, id):
-    print "Downloading screenshot from %s..." % id
+    print("Downloading screenshot from %s..." % id)
     report = self._DownloadAttachedFile(id,
                                         FeedbackDownloader.SCREENSHOT_FIELD)
     data_line = None
@@ -209,7 +211,7 @@ class FeedbackDownloader():
         screenshot = re.search('content: "(.*)"\s*', line).group(1)
 
     if not screenshot:
-      print "Report does not seem to include include a screenshot..."
+      print("Report does not seem to include include a screenshot...")
       return None
 
     return self._OctetStreamToBinary(screenshot)

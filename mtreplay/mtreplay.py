@@ -1,6 +1,9 @@
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
+from __future__ import print_function
+
 from mtedit import MTEdit
 from mtlib.gesture_log import GestureLog
 from mtlib.log import Log
@@ -52,19 +55,19 @@ class ReplayResults(object):
       what = 'events'
 
     if what == 'gestures-log':
-      print self.gestures_log
+      print(self.gestures_log)
     elif what == 'evdev-log':
-      print self.evdev_log
+      print(self.evdev_log)
     elif what == 'activity-log':
-      print self.log.activity
+      print(self.log.activity)
     elif what == 'activity':
       MTEdit().View(self.log)
     elif what == 'gestures':
       for gesture in self.gestures.gestures:
-        print gesture
+        print(gesture)
     elif what == 'events':
       for event in self.gestures.events:
-        print event
+        print(event)
 
 
 class MTReplay(object):
@@ -85,7 +88,7 @@ class MTReplay(object):
       ret = process.wait()
       default_log.info("Process returned: %d", process.returncode)
       if ret != 0:
-        print process.stdout.read()
+        print(process.stdout.read())
         sys.exit(-1)
 
     gestures_path = _GetAbsPath("../../gestures")
@@ -93,7 +96,7 @@ class MTReplay(object):
     if head:
       SafeExec(['git', 'stash'], gestures_path)
 
-    print "Recompiling gestures/libevdev/replay..."
+    print("Recompiling gestures/libevdev/replay...")
     SafeExec(["make", "-j", str(multiprocessing.cpu_count()),
                     "in-place"], _GetAbsPath("../"))
 
@@ -313,6 +316,6 @@ class RawReplay(object):
       properties_file.close()
 
     if process.returncode != 0:
-      print 'Gestures Log: '
-      print self.gestures_log
+      print('Gestures Log: ')
+      print(self.gestures_log)
       raise Exception('Process error: ', ' '.join(parameters))

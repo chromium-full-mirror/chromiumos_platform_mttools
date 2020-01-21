@@ -3,6 +3,9 @@
 # found in the LICENSE file.
 #
 """ This module manages the platform properties in mttools/platforms. """
+
+from __future__ import print_function
+
 from collections import namedtuple
 import json
 import os
@@ -149,11 +152,11 @@ class PlatformProperties(object):
       a_str = str(a_value) if a_value is not None else "N/A"
       b_str = str(b_value) if b_value is not None else "N/A"
       if debug:
-        print "  %s: %.2f (%s == %s)" % (field, score, a_str, b_str)
+        print("  %s: %.2f (%s == %s)" % (field, score, a_str, b_str))
 
     for axis in set(self.absinfos.keys() + other.absinfos.keys()):
       if debug:
-        print "axis %d:" % axis
+        print("axis %d:" % axis)
       self_absinfo = self.absinfos.get(axis, None)
       other_absinfo = other.absinfos.get(axis, None)
       compare_absinfo_prop(self_absinfo, other_absinfo, "min")
@@ -187,22 +190,22 @@ class PlatformDatabase(object):
     properties = PlatformProperties(log=log)
     for name, platform in self.platforms.items():
       if debug:
-        print "-" * 30, name
+        print("-" * 30, name)
       score = platform.Match(properties, loose, debug)
       if debug:
-        print name, "score =", score
+        print(name, "score =", score)
       if score > 0.96:
         if result:
           if loose:
             if debug:
-              print "-" * 10, "Multiple matches. Try strict"
+              print("-" * 10, "Multiple matches. Try strict")
             return self.FindMatching(log, False, debug)
-          print ('multiple matching platforms:', result.name,
-                 'and', platform.name)
+          print(("multiple matching platforms:", result.name,
+                 "and", platform.name))
           return None
         result = platform
     if not result:
-      print 'cannot find matching platform'
+      print("cannot find matching platform")
       return None
     return result
 
@@ -256,9 +259,9 @@ class PlatformDatabase(object):
                         "evemu-describe /dev/input/event%s" % devices[idx][0],
                         verbose=True)
     if not hwprops:
-       print "Please update your device to latest canary or:"
-       print " emerge-${BOARD} inputcontrol"
-       print " cros deploy $DEVICE_IP inputcontrol"
+       print("Please update your device to latest canary or:")
+       print(" emerge-${BOARD} inputcontrol")
+       print(" cros deploy $DEVICE_IP inputcontrol")
        return None
 
 
@@ -279,7 +282,7 @@ class PlatformDatabase(object):
       xorg_file = xorg_file.strip()
 
       # extract identifiers
-      print "Selecting Xorg identifiers from", xorg_file
+      print("Selecting Xorg identifiers from", xorg_file)
       conf = remote.Read(xorg_file)
       all_ids = []
       for match in re.finditer("Identifier\\s+\"([a-zA-Z0-9-_ ]+)\"", conf):
@@ -294,7 +297,7 @@ class PlatformDatabase(object):
         break
 
     if not ids:
-      print "Please configure the platform properties manually"
+      print("Please configure the platform properties manually")
       xorg_file = "todo: add correct xorg conf file"
       ids = ["todo: add correct xorg identifier"]
 
@@ -312,8 +315,8 @@ class PlatformDatabase(object):
     open(hwprops_file, "w").write(hwprops)
     open(props_file, "w").write(props_template % (xorg_file, ids_string))
 
-    print "Created files: "
-    print " ", hwprops_file
-    print " ", props_file
+    print("Created files: ")
+    print(" ", hwprops_file)
+    print(" ", props_file)
 
     return platform_name

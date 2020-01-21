@@ -3,6 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from __future__ import print_function
+
 from mtedit import MTEdit
 from mtlib import Log
 from mtlib.feedback import FeedbackDownloader
@@ -72,7 +74,7 @@ def main(argv):
 
   if options.download:
     if not options.out:
-      print '--download requires -o to be set.'
+      print('--download requires -o to be set.')
       exit(-1)
     log.SaveAs(options.out)
   else:

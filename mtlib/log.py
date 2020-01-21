@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from __future__ import print_function
+
 from gzip import GzipFile
 from mtlib.feedback import FeedbackDownloader
 from StringIO import StringIO
@@ -156,8 +158,8 @@ class FeedbackLog(AbstractLog):
     names = filter(lambda n: n.find(match) >= 0, tar.getnames())
     names.sort()
     if not names:
-      print 'Cannot find files named %s in tar file' % match
-      print 'Tar file contents:', tar.getnames()
+      print('Cannot find files named %s in tar file' % match)
+      print('Tar file contents:', tar.getnames())
       sys.exit(-1)
     return tar.extractfile(names[-1])
 
@@ -170,7 +172,7 @@ class FeedbackLog(AbstractLog):
       self.system = zip.read(zip.namelist()[0])
       zip.extractall('./')
     else:
-      print 'Cannot download logs file'
+      print('Cannot download logs file')
       sys.exit(-1)
 
   def _ExtractLogFiles(self):
@@ -208,7 +210,7 @@ class FeedbackLog(AbstractLog):
       activity_tar_data = base64.b64decode(activity_tar_enc)
 
       if activity_tar_data == '':
-        print 'touch{0}_activity_log.tar found, but empty'.format(interface)
+        print('touch{0}_activity_log.tar found, but empty'.format(interface))
         return []
 
       # untar
@@ -251,7 +253,7 @@ class FeedbackLog(AbstractLog):
     else:
       logs = ExtractByInterface('pad') + ExtractByInterface('screen')
       if not logs:
-        print ('Cannot find touchpad_activity_log.tar or ' +
+        print('Cannot find touchpad_activity_log.tar or '
             'touchscreen_activity_log.tar in systems log file.')
         sys.exit(-1)
 
@@ -259,21 +261,21 @@ class FeedbackLog(AbstractLog):
         idx = 0
       else:
         while True:
-          print 'Which log file would you like to use?'
+          print('Which log file would you like to use?')
           for i, (name, extract_func) in enumerate(logs):
             if name.startswith('evdev'):
               name = 'touchscreen log - ' + name
-            print i, name
-          print '>'
+            print(i, name)
+          print('>')
           selection = sys.stdin.readline()
           try:
             idx = int(selection)
             if idx < 0 or idx >= len(logs):
-              print 'Number out of range'
+              print('Number out of range')
             else:
               break
           except:
-            print 'Not a number'
+            print('Not a number')
 
     name, extract_func = logs[idx]
     self.activity, self.evdev = extract_func(name)

@@ -3,6 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from __future__ import print_function
+
 from mtreplay import MTReplay
 from mtlib import Log, PlatformDatabase
 from optparse import OptionParser
@@ -67,7 +69,7 @@ def main(argv):
   if options.platform:
     platform = replay.PlatformOf(log, True)
     if platform:
-      print platform.name
+      print(platform.name)
     return
 
   results = replay.Replay(log, force_platform=options.force, gdb=options.gdb)

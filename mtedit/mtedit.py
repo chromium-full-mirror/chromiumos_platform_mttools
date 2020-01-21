@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from __future__ import print_function
+
 import os.path
 import random
 import socket
@@ -47,7 +49,7 @@ class MTEdit(object):
       if self._CheckPort(port):
         return port
 
-    print 'No port between 9900-9999 is available'
+    print('No port between 9900-9999 is available')
     exit(-1)
 
   def _PrintTPViewURL(self, start_t=None, end_t=None):
@@ -56,7 +58,7 @@ class MTEdit(object):
       url = url + '&start=%f' % start_t
     if end_t:
       url = url + '&end=%f' % end_t
-    print url
+    print(url)
 
   def View(self, log, at=None):
     """ View 'log' in TPView.
@@ -85,5 +87,5 @@ class MTEdit(object):
 
   def Serve(self):
     """ Serve standalone TPView without any server-side handling """
-    print self.server_url + 'edit'
+    print(self.server_url + 'edit')
     server.Serve(self.port)

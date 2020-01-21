@@ -4,6 +4,8 @@
 
 """Provides tools for packaging, installing and testing firmware."""
 
+from __future__ import print_function
+
 from mtlib.util import Path, RequiredRegex, Execute, SafeExecute, GitRepo
 from tempfile import NamedTemporaryFile
 import tarfile
@@ -278,19 +280,19 @@ class FirmwarePackage(object):
 
       if not target:
         msg = "Symlink for firmware '{}' does not exist on device"
-        print msg.format(firmware)
+        print(msg.format(firmware))
         valid = False
 
       target = Path(target)
       if target.basename != firmware.device_file.basename:
         msg = "Symlink for firmware '{}' does not point to the right file"
-        print msg.format(firmware)
+        print(msg.format(firmware))
         valid = False
 
       cmd = "ls {}".format(firmware.device_file)
       if remote.Execute(cmd) is False:
         msg = "Firmware file {} does not exist on device"
-        print msg.format(firmware.device_file)
+        print(msg.format(firmware.device_file))
         valid = False
 
     return valid
@@ -305,9 +307,9 @@ class FirmwarePackage(object):
         continue
       firmware = binaries[device.hw_version]
       if firmware.fw_version != device.fw_version:
-        print "Device {} did not update correctly:".format(device.hw_version)
-        print "Device version {} != firmware version {}".format(
-            device.fw_version, firmware.fw_version)
+        print("Device {} did not update correctly:".format(device.hw_version))
+        print("Device version {} != firmware version {}".format(
+            device.fw_version, firmware.fw_version))
         valid = False
     return valid
 
