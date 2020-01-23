@@ -8,6 +8,8 @@ This includes tools for regular expressions, path processing, chromium os git
 repositories, shell commands, and user interaction via command line.
 """
 
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 
 import os
@@ -156,6 +158,9 @@ class Path(object):
     return self.path != other.path
 
   def __div__(self, other):
+    return self.Join(other)
+
+  def __truediv__(self, other):
     return self.Join(other)
 
   def __bool__(self):
@@ -398,7 +403,7 @@ class AskUser(object):
       if validate:
         try:
           reply = validate(reply)
-        except Exception, e:
+        except Exception as e:
           print(e)
           continue
       return reply

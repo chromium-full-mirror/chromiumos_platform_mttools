@@ -2,12 +2,17 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 
 from gzip import GzipFile
 from mtlib.feedback import FeedbackDownloader
-from StringIO import StringIO
-from cros_remote import CrOSRemote
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
+from .cros_remote import CrOSRemote
 import base64
 import bz2
 import imghdr

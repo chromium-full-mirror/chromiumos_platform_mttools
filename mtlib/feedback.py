@@ -2,9 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 
-import cookielib
 import datetime
 import time
 import getpass
@@ -14,9 +15,10 @@ import os.path
 import re
 import subprocess
 import sys
-import urllib
-import urllib2
-import StringIO
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 import multiprocessing
 import random
 import errno
@@ -186,7 +188,7 @@ class FeedbackDownloader():
     time.sleep(sleep_time)
     data_line = None
     system_log = None
-    for count, line in enumerate(StringIO.StringIO(report)):
+    for count, line in enumerate(StringIO(report)):
       if 'name: "system_logs.zip"' in line:
         data_line = count + 2
       elif data_line and data_line == count:
@@ -204,7 +206,7 @@ class FeedbackDownloader():
                                         FeedbackDownloader.SCREENSHOT_FIELD)
     data_line = None
     screenshot = None
-    for count, line in enumerate(StringIO.StringIO(report)):
+    for count, line in enumerate(StringIO(report)):
       if 'screenshot <' in line:
         data_line = count + 2
       elif data_line and data_line == count:

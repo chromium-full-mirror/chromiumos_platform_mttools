@@ -4,9 +4,11 @@
 
 """This module defines a class for remotely accessing a Chromebook."""
 
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 
-from cros_info import CrOSDeviceInfo
+from .cros_info import CrOSDeviceInfo
 from mtlib.util import Execute, SafeExecute, AskUser
 import os
 import tempfile

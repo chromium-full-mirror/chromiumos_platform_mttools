@@ -4,6 +4,8 @@
 
 """Provides tools for packaging, installing and testing firmware."""
 
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 
 from mtlib.util import Path, RequiredRegex, Execute, SafeExecute, GitRepo
@@ -174,7 +176,7 @@ class FirmwarePackage(object):
       path = tar_name + str(binary.device_file)
       info = tarfile.TarInfo(path)
       info.size = len(binary.data)
-      info.mode = 0755
+      info.mode = 0o755
       info.uid = 0
       info.gid = 0
       info.mtime = time.time()

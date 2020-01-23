@@ -4,6 +4,8 @@
 #
 """ This module manages the platform properties in mttools/platforms. """
 
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 
 from collections import namedtuple
@@ -12,9 +14,10 @@ import os
 import re
 import sys
 
-from cros_remote import CrOSRemote
-from util import AskUser, ExecuteException
-from xorg_conf import XorgInputClassParser
+from .cros_remote import CrOSRemote
+from .util import AskUser, ExecuteException
+from .xorg_conf import XorgInputClassParser
+from functools import reduce
 
 # path to current script directory
 script_dir = os.path.dirname(os.path.realpath(__file__))
