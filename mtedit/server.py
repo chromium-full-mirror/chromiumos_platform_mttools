@@ -2,20 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 
-from SimpleHTTPServer import SimpleHTTPRequestHandler
-import cgi
-import json
+from http.server import SimpleHTTPRequestHandler
 import os
-import posixpath
-import shutil
-import SimpleHTTPServer
-import socket
-import SocketServer
-import sys
-import threading
-import urllib
+import socketserver
 
 # change into script in order to serve tpview files
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -42,7 +35,8 @@ class MTEditHTTPRequestHandler(SimpleHTTPRequestHandler):
     self.send_response(200)
     self.send_header('Content-type', type)
     self.end_headers()
-    self.wfile.write(data)
+    output_data = data.encode('utf-8') if isinstance(data, str) else data
+    self.wfile.write(output_data)
 
   def end_headers(self):
     # Override end_headers for additional header to be sent with every response
@@ -66,7 +60,14 @@ class MTEditHTTPRequestHandler(SimpleHTTPRequestHandler):
 
     if self.path.startswith('/save/'):
       name = os.path.basename(self.path)
-      length = int(self.headers.getheader('content-length'))
+      # getallmatchingheaders would be great here, if it hadn't been broken for
+      # over 10 years (https://bugs.python.org/issue5053).
+      try:
+          # Python 3 version
+          length = int(self.headers.get_all('Content-Length')[0])
+      except AttributeError:
+          # Python 2.7 version
+          length = int(self.headers.getheader('Content-Length'))
       data.result = self.rfile.read(length)
       data.saved = True
       self.respond('Success')
@@ -89,7 +90,7 @@ def View(port, log=None, persistent=False):
     unless persistent is set to True.
   """
   data = ServerData(log)
-  httpd = SocketServer.TCPServer(('', port), MTEditHTTPRequestHandler)
+  httpd = socketserver.TCPServer(('', port), MTEditHTTPRequestHandler)
   httpd.user_data = data
 
   while True:
@@ -105,7 +106,7 @@ def Edit(port, log=None):
     and returns the trimmed log.
   """
   data = ServerData(log)
-  httpd = SocketServer.TCPServer(('', port), MTEditHTTPRequestHandler)
+  httpd = socketserver.TCPServer(('', port), MTEditHTTPRequestHandler)
   httpd.user_data = data
 
   while True:
@@ -121,7 +122,7 @@ def Serve(port):
     externally (e.g. via keyboard interrupt).
   """
   data = ServerData('')
-  httpd = SocketServer.TCPServer(('', port), MTEditHTTPRequestHandler)
+  httpd = socketserver.TCPServer(('', port), MTEditHTTPRequestHandler)
   httpd.user_data = data
   while True:
     httpd.handle_request()

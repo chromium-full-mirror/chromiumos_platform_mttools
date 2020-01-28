@@ -8,21 +8,15 @@ from __future__ import print_function
 
 from gzip import GzipFile
 from mtlib.feedback import FeedbackDownloader
-try:
-    from StringIO import StringIO
-except ImportError:
-    from io import StringIO
+from io import BytesIO
 from .cros_remote import CrOSRemote
 import base64
 import bz2
-import imghdr
 import os
 import os.path
 import re
-import subprocess
 import sys
 import tarfile
-import tempfile
 import zipfile
 
 # path for temporary screenshot
@@ -135,7 +129,7 @@ class FeedbackLog(AbstractLog):
     self.downloader = downloader
 
     if id_or_filename.endswith('.zip') or id_or_filename.endswith('.bz2'):
-      self.report = open(id_or_filename).read()
+      self.report = open(id_or_filename, 'rb').read()
       screenshot_filename = id_or_filename[:-4] + '.jpg'
       try:
         self.image = open(screenshot_filename).read()
@@ -169,16 +163,18 @@ class FeedbackLog(AbstractLog):
     return tar.extractfile(names[-1])
 
   def _ExtractSystemLog(self):
-    if self.report[0:2] == 'BZ':
-      self.system = bz2.decompress(self.report)
-    elif self.report[0:2] == 'PK':
-      io = StringIO(self.report)
-      zip = zipfile.ZipFile(io, 'r')
-      self.system = zip.read(zip.namelist()[0])
+    if self.report[0:2] == b'BZ':
+      system_log = bz2.decompress(self.report)
+    elif self.report[0:2] == b'PK':
+      bytes_io = BytesIO(self.report)
+      zip = zipfile.ZipFile(bytes_io, 'r')
+      system_log = zip.read(zip.namelist()[0])
       zip.extractall('./')
     else:
       print('Cannot download logs file')
       sys.exit(-1)
+
+    self.system = system_log.decode('utf-8', 'strict')
 
   def _ExtractLogFiles(self):
     # Find embedded and uuencoded activity.tar in system log
@@ -219,7 +215,7 @@ class FeedbackLog(AbstractLog):
         return []
 
       # untar
-      activity_tar_file = tarfile.open(fileobj=StringIO(activity_tar_data))
+      activity_tar_file = tarfile.open(fileobj=BytesIO(activity_tar_data))
 
       def ExtractPadFiles(name):
         # find matching evdev file

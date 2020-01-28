@@ -16,6 +16,7 @@ import os
 import re
 import shlex
 import shutil
+from six import string_types
 import subprocess
 import sys
 import time
@@ -211,7 +212,7 @@ def SafeExecute(command, cwd=None, verbose=False, interactive=False):
   This method behaves the same as Execute, but throws an ExecuteException
   if the command fails.
   """
-  if isinstance(command, basestring):
+  if isinstance(command, string_types):
     command = shlex.split(command)
   (code, out) = __Execute(command, cwd, verbose, interactive)
   if code != 0:
@@ -219,7 +220,7 @@ def SafeExecute(command, cwd=None, verbose=False, interactive=False):
   return out
 
 def __Execute(command, cwd=None, verbose=False, interactive=False):
-  if isinstance(command, basestring):
+  if isinstance(command, string_types):
     command = shlex.split(command)
 
   if cwd:
@@ -251,7 +252,8 @@ def __Execute(command, cwd=None, verbose=False, interactive=False):
 
   out = None
   if not interactive:
-    out = process.stdout.read().replace("\r", "").strip()
+    out = process.stdout.read().decode('utf-8', 'strict')
+    out = out.replace("\r", "").strip()
 
   return (process.returncode, out)
 

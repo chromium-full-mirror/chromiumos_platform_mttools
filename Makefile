@@ -52,7 +52,7 @@ setup-in-place:
 	echo "$(SRC)" > $(PYTHON_SITE)/mttools.pth
 
 	# install symlinks to command line tools
-	ln -sf $(SRC)/mtedit/main.py /usr/bin/mtedit
+	ln -sf $(SRC)/mtedit.py /usr/bin/mtedit
 	ln -sf $(SRC)/mtreplay/main.py /usr/bin/mtreplay
 	ln -sf $(SRC)/mtstat/main.py /usr/bin/mtstat
 	ln -sf $(SRC)/mtbringup/main.py /usr/bin/mtbringup
