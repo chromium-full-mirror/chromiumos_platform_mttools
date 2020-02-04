@@ -279,7 +279,9 @@ class FeedbackLog(AbstractLog):
             print('Not a number')
 
     name, extract_func = logs[idx]
-    self.activity, self.evdev = extract_func(name)
+    activity, evdev = extract_func(name)
+    self.activity = activity.decode('utf-8', 'strict')
+    self.evdev = evdev.decode('utf-8', 'strict')
 
 
 identity_message = """\

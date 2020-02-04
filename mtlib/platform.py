@@ -157,7 +157,7 @@ class PlatformProperties(object):
       if debug:
         print("  %s: %.2f (%s == %s)" % (field, score, a_str, b_str))
 
-    for axis in set(self.absinfos.keys() + other.absinfos.keys()):
+    for axis in set().union(self.absinfos.keys(), other.absinfos.keys()):
       if debug:
         print("axis %d:" % axis)
       self_absinfo = self.absinfos.get(axis, None)

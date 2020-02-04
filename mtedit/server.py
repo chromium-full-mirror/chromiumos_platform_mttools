@@ -68,7 +68,7 @@ class MTEditHTTPRequestHandler(SimpleHTTPRequestHandler):
       except AttributeError:
           # Python 2.7 version
           length = int(self.headers.getheader('Content-Length'))
-      data.result = self.rfile.read(length)
+      data.result = self.rfile.read(length).decode('utf-8', 'strict')
       data.saved = True
       self.respond('Success')
 

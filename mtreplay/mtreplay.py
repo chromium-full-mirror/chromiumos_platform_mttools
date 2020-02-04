@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 
 from mtedit import MTEdit
@@ -156,8 +158,8 @@ class MTReplay(object):
     activity = json.loads(log.activity, parse_float=decimal.Decimal)
 
     # extract from/to times from activity log
-    hwstates = filter(lambda e: e["type"] == "hardwareState",
-                      activity["entries"])
+    hwstates = list(filter(lambda e: e["type"] == "hardwareState",
+                           activity["entries"]))
     if not hwstates:
       dbg_log.warning("No HardwareStates generated")
       return None

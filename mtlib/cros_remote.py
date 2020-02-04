@@ -11,6 +11,7 @@ from __future__ import print_function
 from .cros_info import CrOSDeviceInfo
 from mtlib.util import Execute, SafeExecute, AskUser
 import os
+from six import string_types
 import tempfile
 
 
@@ -83,7 +84,7 @@ class CrOSRemote(object):
     SafeExecute(cmd.split())
 
   def _BuildCommand(self, command, cwd=None):
-    if not isinstance(command, basestring):
+    if not isinstance(command, string_types):
       command = " ".join(command)
     if cwd:
       command = "cd \"%s\" && %s" % (cwd, command)

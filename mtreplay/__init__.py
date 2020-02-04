@@ -1,1 +1,3 @@
-from mtreplay import MTReplay
+from __future__ import absolute_import
+
+from .mtreplay import MTReplay

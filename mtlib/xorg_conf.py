@@ -9,6 +9,7 @@ from __future__ import print_function
 import math
 import numpy as np
 import re
+from six import string_types
 import sys
 import time
 from mtlib.util import RequiredRegex, SafeExecute, Execute, Path
@@ -231,7 +232,7 @@ class XorgInputClassParser(object):
     all options set for this input class.
     """
     if file:
-      if isinstance(file, basestring):
+      if isinstance(file, string_types):
         return self._ParseString(open(file).read())
       elif hasattr(file, 'read'):
         return self._ParseString(file.read())
