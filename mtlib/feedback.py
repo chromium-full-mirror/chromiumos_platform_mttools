@@ -10,6 +10,7 @@ import datetime
 import time
 import getpass
 import imghdr
+import math
 import os
 import os.path
 import re
@@ -117,7 +118,8 @@ class FeedbackDownloader():
     while True:
       process = subprocess.Popen(cmd, shell=True,
                                  stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE)
+                                 stderr=subprocess.PIPE,
+                                 universal_newlines=True)
 
       output, errors = process.communicate()
       errorcode = process.returncode
@@ -151,7 +153,8 @@ class FeedbackDownloader():
     cmd = FeedbackDownloader.GAIA_CMD
     process = subprocess.Popen(cmd, shell=True,
                                stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
+                               stderr=subprocess.PIPE,
+                               universal_newlines=True)
     print("Authenticating...")
     output, errors = process.communicate()
     errorcode = process.returncode
@@ -165,19 +168,20 @@ class FeedbackDownloader():
       return None
     print("Done Authenticating")
 
-  def DownloadIDs(self, num, end_time=None, page_token=''):
-    if not end_time:
+  def DownloadIDs(self, num, end_time_ms=None, page_token=''):
+    if not end_time_ms:
       dt = datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)
-      end_time = (((dt.days * 24 * 60 * 60 + dt.seconds) * 1000) +
-                  (dt.microseconds / 10))
+      end_time_ms = (((dt.days * 24 * 60 * 60 + dt.seconds) * 1000) +
+                     math.ceil(dt.microseconds / 10))
 
     cmd = FeedbackDownloader.STUBBY_LIST_CMD.format(
-        end_time=end_time, max_results=num, token=page_token)
+        end_time=int(end_time_ms), max_results=num, token=page_token)
     output = self._StubbyCall(cmd)
 
-    page_token = filter(lambda x: 'next_page_token' in x, output.split('\n'))[0]
+    lines = output.split('\n')
+    page_token = list(filter(lambda x: 'next_page_token' in x, lines))[0]
     page_token = page_token.split(" ")[-1][1:-1]
-    ids = filter(lambda x: 'id' in x, output.split('\n'))
+    ids = filter(lambda x: 'id' in x, lines)
     ids = [x[7:-1] for x in ids]
     return page_token, ids
 

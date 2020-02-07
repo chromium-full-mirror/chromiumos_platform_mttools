@@ -86,7 +86,8 @@ class AbstractLog(object):
     if self.evdev:
       open(filename + '.evdev', 'w').write(self.evdev)
     if self.system:
-      open(filename + '.system', 'w').write(self.system)
+      open(filename + '.system', 'wb').write(
+              self.system.encode('utf-8', 'strict'))
     if self.image:
       open(filename + '.jpg', 'w').write(self.image)
 

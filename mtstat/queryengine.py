@@ -3,6 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 
 from mtlib.log import FeedbackDownloader, FeedbackLog, Log
@@ -218,8 +220,6 @@ class QueryEngine(object):
     downloader = FeedbackDownloader()
 
     dt = datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)
-    end_time = (((dt.days * 24 * 60 * 60 + dt.seconds) * 1000) +
-                (dt.microseconds / 10))
     num_to_download = int(num_to_download)
     num_downloaded = 0
     invalid_ids = self.GetInvalidIDs()
@@ -229,7 +229,7 @@ class QueryEngine(object):
       # Download list of feedback report id's
       num_this_iteration = min((num_to_download - num_downloaded) * 5, 500)
       page_token, report_ids = downloader.DownloadIDs(
-          num_this_iteration, end_time, page_token)
+          num_this_iteration, page_token=page_token)
 
       # Download and check each report
       parameters = [(r_id, downloader, invalid_ids) for r_id in report_ids]
@@ -259,7 +259,7 @@ def ExecuteSingleSubprocess(args):
   """ Wrapper for subprocesses to run ExecuteSingle """
   try:
     return QueryEngine().ExecuteSingle(args[0], args[1])
-  except Exception, e:
+  except Exception as e:
     traceback.print_exc()
     raise e
 
@@ -267,6 +267,6 @@ def DownloadFileSubprocess(args):
   """ Wrapper for subprocesses to run DownloadFile """
   try:
     return QueryEngine().DownloadFile(args[0], args[1], args[2])
-  except Exception, e:
+  except Exception as e:
     traceback.print_exc()
     raise e
