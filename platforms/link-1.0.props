@@ -7,6 +7,7 @@
 	},
 	"xorg": {
 		"file": "50-touchpad-cmt-link.conf",
+		"conf_directory": "src/overlays/overlay-link/chromeos-base/chromeos-bsp-link/files",
 		"identifiers": ["touchpad link", "touchpad link atmel"]
 	}
 }

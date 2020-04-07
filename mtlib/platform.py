@@ -85,7 +85,7 @@ class PlatformProperties(object):
       self.absinfos[axis] = info
 
   def _ParseProperties(self, data):
-    """ Parse properties from file and inject xorg properties. """
+    """ Parse properties from file. """
     self.properties = {}
     self.ignore_properties = []
     data = json.loads(data)
@@ -103,31 +103,43 @@ class PlatformProperties(object):
     if os.environ.get('PN') and os.environ.get('S'):
       raise Exception("Should not be executed inside ebuild")
 
-    # If run on a Chromebook device, access xorg-conf files from their normal
-    # installed location. If run from inside chroot, access xorg-conf files
-    # from the xorg-conf project repository.
-    src_root = os.environ.get('CROS_WORKON_SRCROOT')
-    if src_root:
-      xorg_conf_path = os.path.join(src_root, xorg_conf_project_path)
-    else:
-      xorg_conf_path = '/etc/gesture'
-      if not os.path.exists(xorg_conf_path):
-        xorg_conf_path = '/etc/X11/xorg.conf.d'
-
-    if xorg_conf_path and 'xorg' in data and 'file' in data['xorg']:
-      filename = os.path.join(xorg_conf_path, data['xorg']['file'])
-      input_classes = self.xorg_parser.Parse(file=filename)
-      if 'identifier' in data['xorg']:
-        properties = input_classes[data['xorg']['identifier']]
-        self.properties.update(properties)
-      if 'identifiers' in data['xorg']:
-        for identifier in data['xorg']['identifiers']:
-          properties = input_classes[identifier]
-          self.properties.update(properties)
+    self._ParseXorgConfig(data)
 
     for prop in self.ignore_properties:
       if prop in self.properties:
         del self.properties[prop]
+
+  def _ParseXorgConfig(self, data):
+    """ Locate and parse the Xorg configuration. """
+    if 'xorg' not in data or 'file' not in data['xorg']:
+      return
+
+    xorg = data['xorg']
+    src_root = os.environ.get('CROS_WORKON_SRCROOT')
+    if src_root:
+      # Running in the chroot.
+      #if 'conf_directory' in xorg:
+      #  # Look wherever the config specifies (probably in an overlay).
+      #  project_path = xorg['conf_directory']
+      #else:
+      #  # Look in the xorg-conf repository.
+      #  project_path = xorg_conf_project_path
+      project_path = (
+              xorg['conf_directory'] if 'conf_directory' in xorg
+              else xorg_conf_project_path)
+
+      xorg_conf_path = os.path.join(src_root, project_path)
+    else:
+      # Running on Chrome OS, so look in the normal installed location.
+      xorg_conf_path = '/etc/gesture'
+      if not os.path.exists(xorg_conf_path):
+        xorg_conf_path = '/etc/X11/xorg.conf.d'
+
+    filename = os.path.join(xorg_conf_path, xorg['file'])
+    input_classes = self.xorg_parser.Parse(file=filename)
+    for identifier in xorg['identifiers']:
+      properties = input_classes[identifier]
+      self.properties.update(properties)
 
   def Match(self, other, loose, debug=False):
     """ Compare properties and return similarity.

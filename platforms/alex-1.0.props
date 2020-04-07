@@ -3,6 +3,7 @@
 	},
 	"xorg": {
 		"file": "50-touchpad-cmt-alex.conf",
+		"conf_directory": "src/overlays/overlay-x86-alex/chromeos-base/chromeos-bsp-x86-alex/files",
 		"identifiers": ["touchpad alex"]
 	}
 }
