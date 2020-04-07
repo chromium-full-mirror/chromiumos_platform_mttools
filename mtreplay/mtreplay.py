@@ -297,7 +297,7 @@ class RawReplay(object):
       parameters = ['gdb', '--args'] + parameters
 
     dbg_log.info("Executing: %s", " ".join(parameters))
-    process = Popen(parameters, env=self._env, cwd=working_dir)
+    process = Popen(parameters, env=self._env, cwd=working_dir, stderr=PIPE)
     process.wait()
     dbg_log.info("Process returns: %d", process.returncode)
 
@@ -320,4 +320,7 @@ class RawReplay(object):
     if process.returncode != 0:
       print('Gestures Log: ')
       print(self.gestures_log)
-      raise Exception('Process error: ', ' '.join(parameters))
+      print('Standard error:')
+      print(process.stderr.read())
+      raise Exception('Error {} from process: {}'
+              .format(process.returncode, ' '.join(parameters)))
