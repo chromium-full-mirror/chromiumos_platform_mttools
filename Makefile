@@ -2,10 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# find location of site_packages
+# find location of Python site_packages (semicolons required because line breaks
+# are ignored)
 define PYTHON_GET_SITE
+from __future__ import print_function;
 from distutils.sysconfig import get_python_lib;
-print get_python_lib()
+print(get_python_lib());
 endef
 PYTHON_SITE=$(shell python -c "$(PYTHON_GET_SITE)")
 
