@@ -184,7 +184,7 @@ class AxisGesture(object):
 
     # normalize gaussian filter kernel
     gsum = sum(gaussian)
-    gaussian = map(lambda g: g / gsum, gaussian)
+    gaussian = list(map(lambda g: g / gsum, gaussian))
 
     # add padding to the front/end of the distances
     segments = []
