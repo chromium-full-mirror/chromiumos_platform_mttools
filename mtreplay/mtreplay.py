@@ -321,6 +321,6 @@ class RawReplay(object):
       print('Gestures Log: ')
       print(self.gestures_log)
       print('Standard error:')
-      print(process.stderr.read())
+      print(process.stderr.read().decode(errors='replace'))
       raise Exception('Error {} from process: {}'
               .format(process.returncode, ' '.join(parameters)))
