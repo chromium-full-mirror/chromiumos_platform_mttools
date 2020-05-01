@@ -43,7 +43,7 @@ install: replay
 	done
 
 	# Copy symlinks
-	cp -d remote $(DESTDIR)/
+	if test -L remote; then cp -d remote $(DESTDIR)/; fi
 
 IN_PLACE_DEPS=../libevdev ../gestures mtreplay
 
