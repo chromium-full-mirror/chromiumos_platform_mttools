@@ -43,6 +43,8 @@ void EvdevGesture::InitHardwareProperties(struct HardwareProperties* hwprops,
   hwprops->supports_t5r2 = Event_Get_T5R2(evdev_);
   hwprops->support_semi_mt = Event_Get_Semi_MT(evdev_);
   hwprops->is_button_pad = Event_Get_Button_Pad(evdev_);
+  hwprops->wheel_is_hi_res = TestBit(REL_WHEEL_HI_RES,
+                                      evdev_->info.rel_bitmask);
 }
 
 void EvdevGesture::PushEventState(EventStatePtr evstate, struct timeval* tv) {
@@ -81,6 +83,7 @@ void EvdevGesture::PushEventState(EventStatePtr evstate, struct timeval* tv) {
   hwstate.rel_y = evstate->rel_y;
   hwstate.rel_wheel = evstate->rel_wheel;
   hwstate.rel_hwheel = evstate->rel_hwheel;
+  hwstate.rel_wheel_hi_res = evstate->rel_wheel_hi_res;
   GestureInterpreterPushHardwareState(interpreter_, &hwstate);
 }
 
