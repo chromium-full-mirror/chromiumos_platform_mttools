@@ -108,11 +108,14 @@ GesturesProp* PropProvider::GetPropSafe(const std::string& name) {
 }
 
 bool PropProvider::Load(const std::string& data) {
-  Json::Reader reader;
+  Json::CharReaderBuilder builder;
+  std::unique_ptr<Json::CharReader> const reader(builder.newCharReader());
+
   Value root;
-  if (!reader.parse(data, root, false)) {
-    std::cerr << "Parse failed" << reader.getFormattedErrorMessages()
-              << std::endl;
+  std::string error;
+  const char * const data_str = data.c_str();
+  if (!reader->parse(data_str, data_str + data.size(), &root, &error)) {
+    std::cerr << "Parse failed" << error << std::endl;
     return false;
   }
 
