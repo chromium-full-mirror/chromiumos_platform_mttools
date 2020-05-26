@@ -6,9 +6,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from http.server import SimpleHTTPRequestHandler
+try:
+  from http.server import SimpleHTTPRequestHandler
+except ImportError:
+  from SimpleHTTPServer import SimpleHTTPRequestHandler
 import os
-import socketserver
+try:
+  import socketserver
+except ImportError:
+  import SocketServer as socketserver
 
 # change into script in order to serve tpview files
 script_dir = os.path.dirname(os.path.realpath(__file__))
