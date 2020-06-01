@@ -1,8 +1,8 @@
 {
-	"gestures": {
-	},
-	"xorg": {
-		"file": "50-touchpad-cmt-spring.conf",
-		"identifiers": ["touchpad daisy_spring atmel"]
-	}
+  "gestures": {
+  },
+  "xorg": {
+    "file": "50-touchpad-cmt-spring.conf",
+    "identifiers": ["touchpad daisy_spring atmel"]
+  }
 }

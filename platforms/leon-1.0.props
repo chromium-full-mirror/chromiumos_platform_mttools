@@ -1,8 +1,8 @@
 {
-	"gestures": {
-	},
-	"xorg": {
-		"file": "50-touchpad-cmt-leon.conf",
-		"identifiers": ["touchpad leon", "touchpad leon cyapa"]
-	}
+  "gestures": {
+  },
+  "xorg": {
+    "file": "50-touchpad-cmt-leon.conf",
+    "identifiers": ["touchpad leon", "touchpad leon cyapa"]
+  }
 }

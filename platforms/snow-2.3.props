@@ -1,8 +1,8 @@
 {
-	"gestures": {
-	},
-	"xorg": {
-		"file": "50-touchpad-cmt-daisy.conf",
-		"identifiers": ["touchpad daisy cyapa"]
-	}
+  "gestures": {
+  },
+  "xorg": {
+    "file": "50-touchpad-cmt-daisy.conf",
+    "identifiers": ["touchpad daisy cyapa"]
+  }
 }
