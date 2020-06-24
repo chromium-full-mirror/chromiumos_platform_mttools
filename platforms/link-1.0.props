@@ -6,8 +6,8 @@
     "Scroll Y Out Scale": 0.5
   },
   "xorg": {
-    "file": "50-touchpad-cmt-link.conf",
-    "conf_directory": "src/overlays/overlay-link/chromeos-base/chromeos-bsp-link/files",
+    "file": "link.conf",
+    "conf_directory": "src/platform/mttools/platforms/old-board-confs",
     "identifiers": ["touchpad link", "touchpad link atmel"]
   }
 }

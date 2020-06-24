@@ -3,8 +3,8 @@
     "Non-linearity correction data file": "tests/lumpy/lumpy_linearity.dat"
   },
   "xorg": {
-    "file": "50-touchpad-cmt-lumpy.conf",
-    "conf_directory": "src/overlays/overlay-lumpy/chromeos-base/chromeos-bsp-lumpy/files",
+    "file": "lumpy.conf",
+    "conf_directory": "src/platform/mttools/platforms/old-board-confs",
     "identifiers": ["touchpad lumpy", "touchpad lumpy cyapa"]
   }
 }

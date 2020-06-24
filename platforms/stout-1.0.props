@@ -2,8 +2,8 @@
   "gestures": {
   },
   "xorg": {
-    "file": "50-touchpad-cmt-stout.conf",
-    "conf_directory": "src/overlays/overlay-stout/chromeos-base/chromeos-bsp-stout/files",
+    "file": "stout.conf",
+    "conf_directory": "src/platform/mttools/platforms/old-board-confs",
     "identifiers": ["touchpad stout"]
   }
 }
