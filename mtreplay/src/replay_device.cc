@@ -154,6 +154,13 @@ void ReplayDevice::GestureCallback(const struct Gesture* gesture) {
               static_cast<int>(gesture->details.scroll.dx),
               static_cast<int>(gesture->details.scroll.dy));
       break;
+    case kGestureTypeMouseWheel:
+      fprintf(fp, "Mouse Wheel (%d, %d) [%d, %d]",
+              static_cast<int>(gesture->details.wheel.dx),
+              static_cast<int>(gesture->details.wheel.dy),
+              gesture->details.wheel.tick_120ths_dx,
+              gesture->details.wheel.tick_120ths_dy);
+      break;
     case kGestureTypeButtonsChange:
       fprintf(fp, "Buttons Change up=%d, down=%d",
               gesture->details.buttons.up,
