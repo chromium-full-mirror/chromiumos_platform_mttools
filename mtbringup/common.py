@@ -108,7 +108,7 @@ class MTBringupTool(object):
         repo.Stash()
       elif AskUser.YesNo("Would you like to discard the changes?",
                          default=False):
-        repo.Checkout("m/master", force=True)
+        repo.Checkout("m/main", force=True)
       else:
         msg = "Cannot continue with local changes in {}"
         raise Exception(msg.format(repo.path))
@@ -119,7 +119,7 @@ class MTBringupTool(object):
       repo.Checkout(branch_name)
     else:
       print("Creating branch {} in {}".format(branch_name, repo.path))
-      repo.CreateBranch(branch_name, "m/master")
+      repo.CreateBranch(branch_name, "m/main")
 
   def CleanGit(self, path):
     repo = GitRepo(path)

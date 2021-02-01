@@ -329,7 +329,7 @@ class GitRepo(object):
     if self.index_dirty:
       status.append("changes in index")
     if self.diverged:
-      status.append("diverged from master")
+      status.append("diverged from main")
     if self.working_directory_dirty:
       status.append("local changes")
     if not status:
@@ -344,7 +344,7 @@ class GitRepo(object):
   def DeleteBranch(self, branch_name):
     if branch_name not in self.branches:
       return
-    self.SafeExecute("checkout -f m/master")
+    self.SafeExecute("checkout -f m/main")
     self.SafeExecute("branch -D " + branch_name)
 
   def CreateBranch(self, branch_name, tracking=None):
@@ -381,7 +381,7 @@ class GitRepo(object):
     self.SafeExecute(cmd)
 
   def Upload(self):
-    result = self.SafeExecute("push %s HEAD:refs/for/master" % self.remote)
+    result = self.SafeExecute("push %s HEAD:refs/for/main" % self.remote)
     if "error" in result or "Error" in result:
       raise Exception("Failed to upload:\n{}".format(result))
     regex = "https://[a-zA-Z0-9\\-\\./]+"
