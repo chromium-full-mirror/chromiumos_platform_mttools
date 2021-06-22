@@ -6,7 +6,7 @@ include common.mk
 
 # global flags
 CPPFLAGS += -I$(SRC)/include -fvisibility=default $(PC_CFLAGS)
-LDLIBS += -ljsoncpp -levdev -lutouch-evemu -lgestures \
+LDLIBS += -ljsoncpp -levdev-cros -lutouch-evemu -lgestures \
 	 $(PC_LIBS)
 
 common_OBJS = src/evdev_gestures.o \
