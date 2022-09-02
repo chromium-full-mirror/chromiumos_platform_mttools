@@ -5,6 +5,10 @@
 #include "evdev_gestures.h"
 #include "prop_provider.h"
 
+#ifndef INPUT_PROP_HAPTIC_TOUCHPAD
+#define INPUT_PROP_HAPTIC_TOUCHPAD 0x07
+#endif
+
 namespace replay {
 
 EvdevGesture::EvdevGesture(EvdevPtr evdev,
@@ -43,6 +47,8 @@ void EvdevGesture::InitHardwareProperties(struct HardwareProperties* hwprops,
   hwprops->supports_t5r2 = Event_Get_T5R2(evdev_);
   hwprops->support_semi_mt = Event_Get_Semi_MT(evdev_);
   hwprops->is_button_pad = Event_Get_Button_Pad(evdev_);
+  hwprops->is_haptic_pad = TestBit(INPUT_PROP_HAPTIC_TOUCHPAD,
+                                   evdev_->info.prop_bitmask);
   hwprops->wheel_is_hi_res = TestBit(REL_WHEEL_HI_RES,
                                       evdev_->info.rel_bitmask);
 }
