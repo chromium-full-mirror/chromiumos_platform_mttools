@@ -11,6 +11,8 @@
 
 namespace replay {
 
+static constexpr int64_t kMicrosecondsPerSecond = 1000000;
+
 EvdevGesture::EvdevGesture(EvdevPtr evdev,
                                   GestureInterpreter* interpreter) {
   evdev_ = evdev;
@@ -76,6 +78,8 @@ void EvdevGesture::PushEventState(EventStatePtr evstate, struct timeval* tv) {
     current++;
   }
   hwstate.timestamp = StimeFromTimeval(tv);
+  hwstate.msc_timestamp =
+      static_cast<stime_t>(evstate->msc_timestamp) / kMicrosecondsPerSecond;
   if (Event_Get_Button_Left(evdev_))
     hwstate.buttons_down |= GESTURES_BUTTON_LEFT;
   if (Event_Get_Button_Middle(evdev_))
