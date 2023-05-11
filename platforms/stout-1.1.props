@@ -4,7 +4,10 @@
   "xorg": {
     "file": "stout.conf",
     "conf_directory": "src/platform/mttools/platforms/old-board-confs",
-    "identifiers": ["touchpad stout"]
+    "identifiers": [
+      "CMT for Synaptics Touchpad",
+      "touchpad stout"
+    ]
   },
   "ignore": ["Vertical Resolution", "Horizontal Resolution"]
 }

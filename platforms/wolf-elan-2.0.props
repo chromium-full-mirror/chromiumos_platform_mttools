@@ -3,7 +3,11 @@
   },
   "xorg": {
     "file": "50-touchpad-cmt-wolf.conf",
-    "identifiers": ["touchpad wolf", "touchpad wolf elan"]
+    "identifiers": [
+      "CMT for Elan Touchpad",
+      "touchpad wolf",
+      "touchpad wolf elan"
+    ]
   },
   "ignore": [
   ]

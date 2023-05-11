@@ -4,7 +4,10 @@
   },
   "xorg": {
     "file": "50-touchpad-cmt-brya.conf",
-    "identifiers": ["touchpad redrix"]
+    "identifiers": [
+      "CMT for Elan Touchpad",
+      "touchpad redrix"
+    ]
   },
   "ignore": [
   ]

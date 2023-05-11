@@ -3,7 +3,10 @@
   },
   "xorg": {
     "file": "50-touchpad-cmt-glimmer.conf",
-    "identifiers": ["touchpad glimmer"]
+    "identifiers": [
+      "CMT for Elan Touchpad",
+      "touchpad glimmer"
+    ]
   },
   "ignore": [
   ]

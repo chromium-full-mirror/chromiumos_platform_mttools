@@ -3,7 +3,10 @@
   },
   "xorg": {
     "file": "50-touchpad-cmt-kip.conf",
-    "identifiers": ["touchpad kip"]
+    "identifiers": [
+      "CMT for Elan Touchpad",
+      "touchpad kip"
+    ]
   },
   "ignore": [
   ]

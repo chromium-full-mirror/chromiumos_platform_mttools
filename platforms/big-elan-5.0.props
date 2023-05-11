@@ -3,7 +3,10 @@
   },
   "xorg": {
     "file": "60-touchpad-cmt-nyan_big.conf",
-    "identifiers": ["touchpad big"]
+    "identifiers": [
+      "CMT for Elan Touchpad",
+      "touchpad big"
+    ]
   },
   "ignore": [
   ]

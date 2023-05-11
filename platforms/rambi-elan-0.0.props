@@ -3,7 +3,10 @@
   },
   "xorg": {
     "file": "50-touchpad-cmt-rambi.conf",
-    "identifiers": ["touchpad rambi elan"]
+    "identifiers": [
+      "CMT for Synaptics Touchpad",
+      "touchpad rambi elan"
+    ]
   },
   "ignore": [
   ]

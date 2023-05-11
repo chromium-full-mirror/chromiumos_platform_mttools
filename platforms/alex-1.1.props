@@ -4,6 +4,9 @@
   "xorg": {
     "file": "alex.conf",
     "conf_directory": "src/platform/mttools/platforms/old-board-confs",
-    "identifiers": ["touchpad alex"]
+    "identifiers": [
+      "CMT for Synaptics Touchpad",
+      "touchpad alex"
+    ]
   }
 }

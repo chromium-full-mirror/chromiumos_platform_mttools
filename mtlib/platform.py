@@ -129,17 +129,28 @@ class PlatformProperties(object):
               else xorg_conf_project_path)
 
       xorg_conf_path = os.path.join(src_root, project_path)
+      base_touchpad_conf_path = os.path.join(src_root, xorg_conf_project_path)
     else:
       # Running on Chrome OS, so look in the normal installed location.
       xorg_conf_path = '/etc/gesture'
+      base_touchpad_conf_path = '/etc/gesture'
       if not os.path.exists(xorg_conf_path):
         xorg_conf_path = '/etc/X11/xorg.conf.d'
 
+    if self.device_class == 'touchpad':
+      base_touchpad_filename = os.path.join(base_touchpad_conf_path,
+                                             '40-touchpad-cmt.conf')
+      self._AddPropertiesFromFile(base_touchpad_filename, xorg['identifiers'])
+
     filename = os.path.join(xorg_conf_path, xorg['file'])
-    input_classes = self.xorg_parser.Parse(file=filename)
-    for identifier in xorg['identifiers']:
-      properties = input_classes[identifier]
-      self.properties.update(properties)
+    self._AddPropertiesFromFile(filename, xorg['identifiers'])
+
+  def _AddPropertiesFromFile(self, filename, identifiers):
+      input_classes = self.xorg_parser.Parse(file=filename)
+      for identifier in identifiers:
+        if identifier in input_classes:
+          properties = input_classes[identifier]
+          self.properties.update(properties)
 
   def Match(self, other, loose, debug=False):
     """ Compare properties and return similarity.
