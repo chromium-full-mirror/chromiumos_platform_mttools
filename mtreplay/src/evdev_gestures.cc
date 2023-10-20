@@ -53,6 +53,8 @@ void EvdevGesture::InitHardwareProperties(struct HardwareProperties* hwprops,
                                    evdev_->info.prop_bitmask);
   hwprops->wheel_is_hi_res = TestBit(REL_WHEEL_HI_RES,
                                       evdev_->info.rel_bitmask);
+  hwprops->reports_pressure = TestBit(ABS_MT_PRESSURE,
+                                      evdev_->info.abs_bitmask);
 }
 
 void EvdevGesture::PushEventState(EventStatePtr evstate, struct timeval* tv) {
