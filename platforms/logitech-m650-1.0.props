@@ -1,0 +1,11 @@
+{
+  "xorg": {
+    "file": "20-mouse.conf",
+    "identifiers": ["generic mouse for Chromium OS"]
+  },
+  "ignore": [
+    "XkbModel",
+    "XkbLayout"
+  ],
+  "device_class": "mouse"
+}
