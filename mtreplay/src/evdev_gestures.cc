@@ -40,8 +40,6 @@ void EvdevGesture::InitHardwareProperties(struct HardwareProperties* hwprops,
   properties->GetPropValue("Horizontal Resolution", &hwprops->res_x);
   hwprops->res_y = Event_Get_Res_Y(evdev_);
   properties->GetPropValue("Vertical Resolution", &hwprops->res_y);
-  hwprops->screen_x_dpi = 133;
-  hwprops->screen_y_dpi = 133;
   hwprops->orientation_minimum = Event_Get_Orientation_Minimum(evdev_);
   hwprops->orientation_maximum = Event_Get_Orientation_Maximum(evdev_);
   hwprops->max_finger_cnt = Event_Get_Slot_Count(evdev_);
