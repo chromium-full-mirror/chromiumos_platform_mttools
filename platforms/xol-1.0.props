@@ -1,0 +1,13 @@
+{
+  "gestures": {
+  },
+  "xorg": {
+    "file": "50-touchpad-cmt-brya.conf",
+    "identifiers": [
+      "touchpad xol"
+    ]
+  },
+  "ignore": [
+  ]
+}
+
