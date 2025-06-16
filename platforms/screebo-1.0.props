@@ -1,0 +1,14 @@
+{
+  "gestures": {
+  },
+  "xorg": {
+    "file": "50-touchpad-cmt-rex.conf",
+    "identifiers": [
+      "CMT for Elan Touchpad",
+      "touchpad screebo elan"
+    ]
+  },
+  "ignore": [
+  ]
+}
+
