@@ -24,6 +24,13 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 platforms_dir = os.path.realpath(os.path.join(script_dir, '..', 'platforms'))
 xorg_conf_project_path = 'src/platform/xorg-conf'
 
+inapplicable_properties = [
+    "Scroll Axes",
+    "Scroll Buttons",
+    "XkbLayout",
+    "XkbModel"
+]
+
 props_template = """\
 {
   "gestures": {
@@ -49,7 +56,7 @@ class PlatformProperties(object):
     self.absinfos = {}
     self.device_class = "touchpad"
     self.properties = {}
-    self.ignore_properties = []
+    self.ignore_properties = inapplicable_properties.copy()
     if platform:
       basename = os.path.join(platforms_dir, platform)
       self.name = platform
@@ -87,7 +94,7 @@ class PlatformProperties(object):
   def _ParseProperties(self, data):
     """ Parse properties from file. """
     self.properties = {}
-    self.ignore_properties = []
+    self.ignore_properties = inapplicable_properties.copy()
     data = json.loads(data)
 
     if 'gestures' in data:
@@ -140,6 +147,8 @@ class PlatformProperties(object):
     if self.device_class == 'touchpad':
       base_touchpad_filename = os.path.join(base_touchpad_conf_path,
                                              '40-touchpad-cmt.conf')
+      if 'touchpad' not in xorg['identifiers']:
+        xorg['identifiers'].insert(0, 'touchpad')
       self._AddPropertiesFromFile(base_touchpad_filename, xorg['identifiers'])
 
     filename = os.path.join(xorg_conf_path, xorg['file'])
